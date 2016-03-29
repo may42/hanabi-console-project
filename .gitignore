@@ -1,0 +1,8 @@
+.idea
+.vs
+bin
+obj
+Properties
+App.config
+my-console-project.csproj
+my-console-project.sln
