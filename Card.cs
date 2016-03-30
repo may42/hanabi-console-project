@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace my_console_project
 {
@@ -14,9 +15,18 @@ namespace my_console_project
         }
 
         private int _rank;
+
+        public static Dictionary<char, Colors> ColorsByFirstLetter = new Dictionary<char, Colors>
+        {
+            { 'R', Colors.Red },
+            { 'G', Colors.Green },
+            { 'B', Colors.Blue },
+            { 'Y', Colors.Yellow },
+            { 'W', Colors.White }
+        };
         
     #region Props
-        public Colors Color { get; private set; }
+        public Colors Color { get; }
 
         public int Rank
         {
@@ -43,7 +53,7 @@ namespace my_console_project
         }
 
         public Card(string cardAbbreviation)
-            : this (int.Parse(cardAbbreviation[1].ToString()), ColorParse(cardAbbreviation[0]))
+            : this (int.Parse(cardAbbreviation[1].ToString()), ColorsByFirstLetter[cardAbbreviation[0]])
         {
         }
 
@@ -51,94 +61,6 @@ namespace my_console_project
         {
             Color = card.Color;
             Rank = card.Rank;
-        }
-
-    #endregion
-    #region Methods
-        /// <summary>
-        /// Parsing string into card instance
-        /// </summary>
-        /// <param name = "cardAbbreviation">Abbreviation, which represents a card. Kind of <value>"R1"</value>, <value>"Y3"</value>... 1-st symbol -- card color, 2-nd -- card rank</param>
-        /// <returns></returns>
-        public static Card Parse(string cardAbbreviation)
-        {
-            if (cardAbbreviation.Length == 2)
-            {
-                return new Card(int.Parse(cardAbbreviation[1].ToString()), ColorParse(cardAbbreviation[0]));
-            }
-            throw new ArgumentException("Incorrect input data");
-        }
-
-        /// <summary>
-        /// Parsing string into color
-        /// </summary>
-        /// <param name = "colorAbbreviation">One-symbol abbreviation of color, kind of: <value>'R'</value>, <value>'Y'</value>, <value>'W'</value>...</param>
-        /// <returns></returns>
-        public static Colors ColorParse(char colorAbbreviation)
-        {
-            switch (colorAbbreviation)
-            {
-                case 'R':
-                {
-                    return Colors.Red;
-                }
-                case 'Y':
-                {
-                    return Colors.Yellow;
-                }
-                case 'W':
-                {
-                    return Colors.White;
-                }
-                case 'B':
-                {
-                    return Colors.Blue;
-                }
-                case 'G':
-                {
-                    return Colors.Green;
-                }
-                default:
-                {
-                    throw new ArgumentException("Incorrect card color abbreviation.");
-                }
-            }
-        }
-
-        /// <summary>
-        /// Parsing string into color
-        /// </summary>
-        /// <param name = "color">Full color name. Kind of: <value>"Yellow"</value>, <value>"Red"</value>, <value>"White"</value>...</param>
-        /// <returns></returns>
-        public static Colors ColorParse(string color)
-        {
-            switch (color)
-            {
-                case "Red":
-                {
-                    return Colors.Red;
-                }
-                case "Yellow":
-                {
-                    return Colors.Yellow;
-                }
-                case "Blue":
-                {
-                    return Colors.Blue;
-                }
-                case "White":
-                {
-                    return Colors.White;
-                }
-                case "Green":
-                {
-                    return Colors.Green;
-                }
-                default:
-                {
-                    throw new ArgumentException("Incorrect card color abbreviation.");
-                }
-            }
         }
 
     #endregion
