@@ -53,7 +53,7 @@ namespace my_console_project
         }
 
         public Card(string cardAbbreviation)
-            : this (int.Parse(cardAbbreviation[1].ToString()), ColorsByFirstLetter[cardAbbreviation[0]])
+            : this (int.Parse(cardAbbreviation[1].ToString()), ColorParse(cardAbbreviation[0]))
         {
         }
 
@@ -61,6 +61,33 @@ namespace my_console_project
         {
             Color = card.Color;
             Rank = card.Rank;
+        }
+
+    #endregion
+    #region Methods
+
+        /// <summary>
+        /// Parsing string into color
+        /// </summary>
+        /// <param name = "colorAbbreviation">One-symbol abbreviation of color, kind of: <value>'R'</value>, <value>'Y'</value>, <value>'W'</value>...</param>
+        /// <returns></returns>
+        public static Colors ColorParse(char colorAbbreviation)
+        {
+            if (!ColorsByFirstLetter.ContainsKey(colorAbbreviation))
+            {
+                throw new ArgumentException("Incorrect card color abbreviation.");
+            }
+            return ColorsByFirstLetter[colorAbbreviation];
+        }
+
+        /// <summary>
+        /// Parsing string into color
+        /// </summary>
+        /// <param name = "color">Full color name. Kind of: <value>"Yellow"</value>, <value>"Red"</value>, <value>"White"</value>...</param>
+        /// <returns></returns>
+        public static Colors ColorParse(string color)
+        {
+            return ColorParse(color[0]);
         }
 
     #endregion
