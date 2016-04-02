@@ -15,7 +15,8 @@ namespace my_console_project
     #region Fields
         private Player _player1, _player2;
         private int _successfullyPlayedCards;
-        public static readonly int CardsValueInPlayersHand = 5, MinCardsValueInDeck = 11, MaxCardsValueOnTable = 25;
+        // todo: init those fields with constructor:
+        public readonly int NumberOfCardsInPlayersHand = 5, MaxCardsAmountOnTable = 25, MinCardsAmountInDeck;
         public delegate void GameMethodsContainer();
         public event GameMethodsContainer GameOver;
 
@@ -30,14 +31,11 @@ namespace my_console_project
             private set
             {
                 // Количество успешно сыгранных карт не может привышать максимально возможное количество сыгранных карт
-                if (value <= MaxCardsValueOnTable)
+                if (value > MaxCardsAmountOnTable)
                 {
-                    _successfullyPlayedCards = value;
+                    throw new ArgumentException("Imposible successfullyPlayedCards value");
                 }
-                else
-                {
-                    GameOver();
-                }
+                _successfullyPlayedCards = value;
             }
         }
 
@@ -61,6 +59,8 @@ namespace my_console_project
             WhoIsMovingNow = PlayerName.First;
             CurrentTurn = SuccessfullyPlayedCards = MovesWithRisk = 0;
             RedSequenceLine = YellowSequenceLine = WhiteSequenceLine = GreenSequenceLine = BlueSequenceLine = 0;
+            // Следующая строка - для возможности изменения максимального количества карт на руках итд
+            MinCardsAmountInDeck = NumberOfCardsInPlayersHand * 2 + 1;
             // Подписка метода OnGameOver() на событие GameOver
             GameOver += OnGameOver;
         }
@@ -70,58 +70,39 @@ namespace my_console_project
         /// <summary>
         /// Starts new Hanabi game with standart options
         /// </summary>
-        public void StartNewGame()
+        public void StartNewGame(string startCommand)
         {
-            string inputData = Console.ReadLine();
-            if (inputData.StartsWith("Start new game with deck"))
+            if (string.IsNullOrEmpty(startCommand))
             {
-                // 'k' - последний символ в строке-команде "Start new game with deck"
-                // Substring(1) подтирает 1-й символ (в данном случае -- пробел), с которого начинается строка
-                DeckFilling(inputData.Split('k')[1].Substring(1));
-                if (Deck.Count < MinCardsValueInDeck) return;
-                _player1 = new Player(this);
-                _player2 = new Player(this);
-                MoveTransfer();
+                throw new ArgumentException("Start game command expected");
             }
-            else
+            if (!startCommand.StartsWith("Start new game with deck "))
             {
-                Console.Clear();
-                Console.WriteLine("Invalid command entered. Try again.");
+                throw new ArgumentException("Expected \"Start new game with deck %ABBREVIATIONS%\", instead got: " + startCommand);
             }
+            // В команде "Start new game with deck ..." данные начинаются с позиции 25
+            FillDeck(startCommand.Substring(25));
+            _player1 = new Player(this);
+            _player2 = new Player(this);
+            GameLoop();
         }
 
         /// <summary>
-        /// Move exchange from fisrt player to second player, while game is playing
+        /// Move exchange from fisrt player to second player, while game is played
         /// </summary>
-        private void MoveTransfer()
+        private void GameLoop()
         {
+            // Так как снаружи этого игрового цикла есть код, в котором ошибки нужно обрабатывать схожим образом,
+            // а так же для верной работы автоматизированных тестов - я решил ошибки выбрасывать наружу.
+            // В бранче уровня сложности 1 игровой луп будет вообще вынесен из этого класса.
             while (IsAlive)
             {
-                try
-                {
 #if DEBUG
-                    ShowStatistics();
+                ShowStatistics();
 #endif
-                    PlayerMoves();
-                }
-                catch (ArgumentException ex)
-                {
-                    Console.WriteLine("{0} \n{1}", ex, ex.Message);
-                    continue;
-                }
-                WhoIsMovingNow = WhoIsMovingNow == PlayerName.Second ? PlayerName.First : PlayerName.Second;
-            }
-        }
-
-        /// <summary>
-        /// Regular player's move
-        /// </summary>
-        private void PlayerMoves()
-        {
-            ParseAndRunCommand(Console.ReadLine());
-            if (Deck.Count == 0)
-            {
-                GameOver();
+                ParseAndRunCommand(Console.ReadLine());
+                if (Deck.Count == 0) GameOver();
+                WhoIsMovingNow = PlayerName.Second == WhoIsMovingNow ? PlayerName.First : PlayerName.Second;
             }
         }
 
@@ -132,6 +113,9 @@ namespace my_console_project
         /// <returns></returns>
         private bool CheckCardMoveAvaliability(Card card)
         {
+            // если все %color%SequenceLine заменить на Dictionary <Card.Colors, byte> CurrentTopInSequences
+            // то проверка упростится до CurrentTopInSequences[card.Color] + 1 == card.Rank
+            // но инициализацию Dictionary с помощью цикла я не знаю где проводить
             switch (card.Color)
             {
                 case Card.Colors.Blue:
@@ -156,7 +140,7 @@ namespace my_console_project
                 }
                 default:
                 {
-                    throw new ArgumentException("Invalid card.");
+                    throw new ArgumentException("Сard had unknown color");
                 }
             }
         }
@@ -175,27 +159,27 @@ namespace my_console_project
         /// </summary>
         private void ShowStatistics()
         {
-            Console.WriteLine("Turn: {0}, cards played: {1}, with risk: {2}", CurrentTurn, SuccessfullyPlayedCards, MovesWithRisk);
+            Console.WriteLine("Turn: {0}, cards: {1}, with risk: {2}", CurrentTurn, SuccessfullyPlayedCards, MovesWithRisk);
         }
 
         /// <summary>
         /// Filling deck with cards, written in input text
         /// </summary>
-        /// <param name = "cardsAbbreviationsPhrase">Text with cards abbreviations kind of <value>"R1"</value>, <value>"Y3"</value>, <value>"W4"</value>...</param>
-        private void DeckFilling(string cardsAbbreviationsPhrase)
+        /// <param name = "abbreviationsString">Text with cards abbreviations kind of <value>"R1"</value>, <value>"Y3"</value>, <value>"W4"</value>...</param>
+        private void FillDeck(string abbreviationsString)
         {
-            try
+            if (string.IsNullOrEmpty(abbreviationsString))
             {
-                string[] cardsAbbreviations = cardsAbbreviationsPhrase.Split(' ');
-                foreach (string abbreviation in cardsAbbreviations)
-                {
-                    Deck.Add(new Card(abbreviation));
-                }
+                throw new ArgumentException("Card abbreviations expected");
             }
-            catch (ArgumentException ex)
+            string[] abbreviations = abbreviationsString.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (abbreviations.Length < MinCardsAmountInDeck)
             {
-                Console.Clear();
-                Console.WriteLine("Invalid card data entered. Try again. \n\nAdditional info:\n" + ex.Message);
+                throw new ArgumentException("Expected at least " + MinCardsAmountInDeck + " card abbreviations, instead got " + abbreviations.Length);
+            }
+            foreach (string a in abbreviations)
+            {
+                Deck.Add(new Card(a));
             }
         }
 
@@ -205,25 +189,33 @@ namespace my_console_project
         /// <param name = "command">Command text</param>
         private void ParseAndRunCommand(string command)
         {
-            if (command.StartsWith("Tell color"))
+            if (string.IsNullOrEmpty(command))
             {
-                TellColor(WhoIsMovingNow == PlayerName.First ? _player2 : _player1, command);
+                throw new ArgumentException("Command expected");
             }
-            else if (command.StartsWith("Tell rank"))
+            // Может, ссылки на текущих activePlayer и passivePlayer вообще хранить в приватных полях?
+            // Тогда многие методы проще станут, плюс отпадёт нужда в WhoIsMovingNow
+            Player activePlayer = WhoIsMovingNow == PlayerName.First ? _player1 : _player2;
+            Player passivePlayer = WhoIsMovingNow == PlayerName.First ? _player2 : _player1;
+            if (command.StartsWith("Tell color "))
             {
-                TellRank(WhoIsMovingNow == PlayerName.First ? _player2 : _player1, command);
+                TellColor(passivePlayer, command);
             }
-            else if (command.StartsWith("Play card"))
+            else if (command.StartsWith("Tell rank "))
             {
-                PlayCard(WhoIsMovingNow == PlayerName.First ? _player1 : _player2, command);
+                TellRank(passivePlayer, command);
             }
-            else if (command.StartsWith("Drop card"))
+            else if (command.StartsWith("Play card "))
             {
-                DropCard(WhoIsMovingNow == PlayerName.First ? _player1 : _player2, command);
+                PlayCard(activePlayer, command);
+            }
+            else if (command.StartsWith("Drop card "))
+            {
+                DropCard(activePlayer, command);
             }
             else
             {
-                throw new ArgumentException("Invalid command.");
+                throw new ArgumentException("Unknown command: " + command);
             }
         }
 
@@ -234,25 +226,19 @@ namespace my_console_project
         /// <param name = "command">Command text</param>
         private void PlayCard(Player activePlayer, string command)
         {
-            int cardNumber = int.Parse(command.Split(' ')[2]);
-            if (cardNumber < 0 || cardNumber >= activePlayer.CardsOnHands.Count)
-            {
-                throw new ArgumentException("Invalid card rank.");
-            }
-            // Экземпляр, инкапсулирующий ссылку на карту в руке. Для удобства, чтоб вместо "activePlayer.CardsOnHands[cardNumber]" писать "cardOnHand"
-            CardOnHand cardOnHand = activePlayer.CardsOnHands[cardNumber];
-            // Экземпляр, инкапсулирующий ссылку на карту. Для удобства, чтоб вместо "activePlayer.CardsOnHands[cardNumber]" писать "cardOnHand"
+            int cardNumber = CardNumberParse(command.Substring(10));
+            CardOnHand cardOnHand = activePlayer.CardsOnHand[cardNumber];
             Card card = cardOnHand.Card;
             if (CheckCardMoveAvaliability(card))
             {
                 IncraseLine(card.Color);
                 activePlayer.DropAndTryTakeNewCard(cardNumber);
-                // Если номинал карты не 1 (ей можно всегда начать ряд масти), и у игрока неполная инфа по карте -- ход рискованный
-                if (card.Rank != 1 && cardOnHand.CardInfoAvaliability != CardOnHand.CardInfoAvaliabilities.All)
+                // Если у игрока неполная инфа по карте - ход рискованный
+                if (cardOnHand.CardInfoAvaliability != CardOnHand.CardInfoAvaliabilities.All)
                 {
 #if DEBUG
-                    Console.WriteLine(">>>\n>>>Now was risky move, played card {0}, info: {1}",
-                        card.Color + card.Rank, cardOnHand.CardInfoAvaliability);
+                    Console.WriteLine(">>>Now was risky move, played card {0} {1}, info: {2}",
+                        card.Color, card.Rank, cardOnHand.CardInfoAvaliability);
 #endif
                     MovesWithRisk++;
                 }
@@ -261,6 +247,7 @@ namespace my_console_project
             }
             else
             {
+                // Card cannot be played - silent game over 
                 CurrentTurn++;
                 GameOver();
             }
@@ -272,6 +259,7 @@ namespace my_console_project
         /// <param name = "color">Line of which color need to be changed</param>
         private void IncraseLine(Card.Colors color)
         {
+            // эта проверка тоже упростится если использовать Dictionary <Card.Colors, byte> CurrentTopInSequences
             switch (color)
             {
                 case Card.Colors.Blue:
@@ -309,7 +297,8 @@ namespace my_console_project
         /// <param name = "command">Text command</param>
         private void DropCard(Player activePlayer, string command)
         {
-            activePlayer.DropAndTryTakeNewCard(int.Parse(command.Substring(10)));
+            int cardNumber = CardNumberParse(command.Substring(10));
+            activePlayer.DropAndTryTakeNewCard(cardNumber);
             CurrentTurn++;
         }
 
@@ -320,20 +309,22 @@ namespace my_console_project
         /// <param name = "command">Text command</param>
         private void TellColor(Player passivePlayer, string command)
         {
-            Card.Colors color = Card.ColorParse(command.Split(' ')[2]);
-            bool[] whichCardsToTell = new bool[passivePlayer.CardsOnHands.Count];
-            for (int i = 0; i < whichCardsToTell.Length; i++)
+            string[] words = command.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            Card.Colors color = Card.ColorParse(words[2]);
+            bool[] whichCardsToTell = new bool[NumberOfCardsInPlayersHand];
+            if (words.Length < 6)
             {
-                if (command.Contains(i.ToString()))
-                {
-                    whichCardsToTell[i] = true;
-                }
+                throw new ArgumentException("Expected \"Tell color %COLOR_NAME% for cards %CARD_NUMBERS%\", instead got: " + command);
             }
-            // Нужен для сравнения по составу экземпляра, а не по ссылке
-            IStructuralEquatable equatableWhichCardsToTell = whichCardsToTell;
-            // Сравнение по составу экземпляра ( Object.Equals (Object obj, StructuralComparisons.StructuralEqualityComparer) )
-            if (!equatableWhichCardsToTell.Equals(GetCardsOfColor(passivePlayer, color), StructuralComparisons.StructuralEqualityComparer))
+            for (int i = 5; i < words.Length; i++)
             {
+                whichCardsToTell[CardNumberParse(words[i])] = true;
+            }
+            // Сравнение по составу экземпляра
+            IStructuralEquatable equatableArray = whichCardsToTell;
+            if (!equatableArray.Equals(GetCardsOfColor(passivePlayer, color), StructuralComparisons.StructuralEqualityComparer))
+            {
+                // Attempted to tell color for wrong cards
                 CurrentTurn++;
                 GameOver();
                 return;
@@ -350,10 +341,10 @@ namespace my_console_project
         /// <returns>Roster of predicates, which tells, if the card in player's hands is of desired color (<value>true</value>) or not <value>false</value></returns>
         private bool[] GetCardsOfColor(Player player, Card.Colors color)
         {
-            bool[] whichCardsAreOfRank = new bool[player.CardsOnHands.Count];
-            for (int i = 0; i < player.CardsOnHands.Count; i++)
+            bool[] whichCardsAreOfRank = new bool[player.CardsOnHand.Count];
+            for (int i = 0; i < player.CardsOnHand.Count; i++)
             {
-                if (player.CardsOnHands[i].Card.Color == color)
+                if (player.CardsOnHand[i].Card.Color == color)
                 {
                     whichCardsAreOfRank[i] = true;
                 }
@@ -368,22 +359,22 @@ namespace my_console_project
         /// <param name = "command"></param>
         private void TellRank(Player passivePlayer, string command)
         {
-            bool[] whichCardsToTell = new bool[passivePlayer.CardsOnHands.Count];
-            // Можно заменить на нарезку по символу "пробел" (command.Split[N])
-            // Tell_rank_<--(10 position)1_for_cards_1_2_3_4
-            int rank = int.Parse(command.Substring(10)[0].ToString());
-            // Tell_rank_1_for_cards_<--(22 position)1_2_3_4
-            command = command.Substring(22);
-            for (int i = 0; i < whichCardsToTell.Length; i++)
+            string[] words = command.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            int rank = CardNumberParse(words[2]);
+            bool[] whichCardsToTell = new bool[NumberOfCardsInPlayersHand];
+            if (words.Length < 6)
             {
-                if (command.Contains(i.ToString()))
-                {
-                    whichCardsToTell[i] = true;
-                }
+                throw new ArgumentException("Expected \"Tell rank %RANK_NO% for cards %CARD_NUMBERS%\", instead got: " + command);
             }
-            IStructuralEquatable equatableWhichCardsToTell = whichCardsToTell;
-            if (!equatableWhichCardsToTell.Equals(GetCardsOfRank(passivePlayer, rank), StructuralComparisons.StructuralEqualityComparer))
+            for (int i = 5; i < words.Length; i++)
             {
+                whichCardsToTell[CardNumberParse(words[i])] = true;
+            }
+            // Сравнение по составу экземпляра
+            IStructuralEquatable equatableArray = whichCardsToTell;
+            if (!equatableArray.Equals(GetCardsOfRank(passivePlayer, rank), StructuralComparisons.StructuralEqualityComparer))
+            {
+                // Attempted to tell color for wrong cards
                 CurrentTurn++;
                 GameOver();
                 return;
@@ -400,10 +391,10 @@ namespace my_console_project
         /// <returns>Roster of predicates, which tells, if the card in player's hands is of desired rank (<value>true</value>) or not <value>false</value></returns>
         private bool[] GetCardsOfRank(Player player, int rank)
         {
-            bool[] whichCardsAreOfRank = new bool[player.CardsOnHands.Count];
-            for (int i = 0; i < player.CardsOnHands.Count; i++)
+            bool[] whichCardsAreOfRank = new bool[player.CardsOnHand.Count];
+            for (int i = 0; i < player.CardsOnHand.Count; i++)
             {
-                if (player.CardsOnHands[i].Card.Rank == rank)
+                if (player.CardsOnHand[i].Card.Rank == rank)
                 {
                     whichCardsAreOfRank[i] = true;
                 }
@@ -412,10 +403,36 @@ namespace my_console_project
         }
 
         /// <summary>
+        /// Parsing string into card number
+        /// </summary>
+        /// <param name = "cardNumber">String containg card number</param>
+        /// <returns>Card number</returns>
+        private int CardNumberParse(string cardNumber)
+        {
+            if (string.IsNullOrEmpty(cardNumber))
+            {
+                throw new ArgumentException("Card number string expected");
+            }
+            try
+            {
+                int n = int.Parse(cardNumber);
+                if (n < 0 || n >= NumberOfCardsInPlayersHand)
+                {
+                    throw new ArgumentException("Card number out of range: " + n);
+                }
+                return n;
+            }
+            catch (FormatException e)
+            {
+                throw new ArgumentException("Incorrect card number: " + cardNumber, e);
+            }
+        }
+
+        /// <summary>
         /// Gives first card from deck and destroying it from deck
         /// </summary>
         /// <returns>Deck's first card</returns>
-        public Card GiveCard()
+        public Card TakeCardFromDeck()
         {
             Card card = Deck[0];
             Deck.RemoveAt(0);
