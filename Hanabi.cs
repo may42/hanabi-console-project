@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace my_console_project
 {
-    class Game
+    class Hanabi
     {
         public enum PlayerName
         {
@@ -52,7 +52,7 @@ namespace my_console_project
 
     #endregion
     #region Constructors
-        public Game()
+        public Hanabi()
         {
             IsAlive = true;
             Deck = new List<Card>();

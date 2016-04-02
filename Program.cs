@@ -2,7 +2,7 @@
 
 namespace my_console_project
 {
-    class Hanabi
+    class Program
     {
         static void Main()
         {
@@ -13,9 +13,9 @@ namespace my_console_project
 #if DEBUG
                     Console.WriteLine("Creating new Game instance. Awaiting for Start-command");
 #endif
-                    Game theGame = new Game();
+                    Hanabi game = new Hanabi();
                     // Содержимое метода StartNewGame я бы вообще добавил внутрь конструктора
-                    theGame.StartNewGame(Console.ReadLine());
+                    game.StartNewGame(Console.ReadLine());
 #if DEBUG
                     Console.WriteLine("Game ended with OnGameOver() method");
 #endif

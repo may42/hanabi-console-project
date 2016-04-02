@@ -5,11 +5,11 @@ namespace my_console_project
 {
     class Player
     {
-        private readonly Game _playersGame;
+        private readonly Hanabi _playersGame;
         public List<CardOnHand> CardsOnHand { get; private set; }
 
     #region Constructors
-        public Player(Game game)
+        public Player(Hanabi game)
         {
             _playersGame = game;
             CardsOnHand = new List<CardOnHand>();

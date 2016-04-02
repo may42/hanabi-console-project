@@ -4,5 +4,4 @@ bin
 obj
 Properties
 App.config
-my-console-project.csproj
-my-console-project.sln
+my-console-project*
