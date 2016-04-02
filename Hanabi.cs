@@ -111,7 +111,7 @@ namespace my_console_project
         /// </summary>
         /// <param name = "card">Card, which need to be checked</param>
         /// <returns></returns>
-        private bool CheckCardMoveAvaliability(Card card)
+        private bool CheckMoveAvaliability(Card card)
         {
             // если все %color%SequenceLine заменить на Dictionary <Card.Colors, byte> CurrentTopInSequences
             // то проверка упростится до CurrentTopInSequences[card.Color] + 1 == card.Rank
@@ -227,14 +227,13 @@ namespace my_console_project
         private void PlayCard(Player activePlayer, string command)
         {
             int cardNumber = CardNumberParse(command.Substring(10));
-            CardOnHand cardOnHand = activePlayer.CardsOnHand[cardNumber];
-            Card card = cardOnHand.Card;
-            if (CheckCardMoveAvaliability(card))
+            Card card = activePlayer.CardsOnHand[cardNumber];
+            if (CheckMoveAvaliability(card))
             {
                 IncraseLine(card.Color);
                 activePlayer.DropAndTryTakeNewCard(cardNumber);
-                // Если у игрока неполная инфа по карте - ход рискованный
-                if (cardOnHand.CardInfoAvaliability != CardOnHand.CardInfoAvaliabilities.All)
+                // todo: check move for risk
+                if (false)
                 {
 #if DEBUG
                     Console.WriteLine(">>>Now was risky move, played card {0} {1}, info: {2}",
@@ -344,7 +343,7 @@ namespace my_console_project
             bool[] whichCardsAreOfRank = new bool[player.CardsOnHand.Count];
             for (int i = 0; i < player.CardsOnHand.Count; i++)
             {
-                if (player.CardsOnHand[i].Card.Color == color)
+                if (player.CardsOnHand[i].Color == color)
                 {
                     whichCardsAreOfRank[i] = true;
                 }
@@ -394,7 +393,7 @@ namespace my_console_project
             bool[] whichCardsAreOfRank = new bool[player.CardsOnHand.Count];
             for (int i = 0; i < player.CardsOnHand.Count; i++)
             {
-                if (player.CardsOnHand[i].Card.Rank == rank)
+                if (player.CardsOnHand[i].Rank == rank)
                 {
                     whichCardsAreOfRank[i] = true;
                 }

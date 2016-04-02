@@ -6,34 +6,19 @@ namespace my_console_project
     class Player
     {
         private readonly Hanabi _playersGame;
-        public List<CardOnHand> CardsOnHand { get; private set; }
-
-    #region Constructors
+        public List<Card> CardsOnHand { get; }
+        
         public Player(Hanabi game)
         {
             _playersGame = game;
-            CardsOnHand = new List<CardOnHand>();
+            CardsOnHand = new List<Card>();
             //takes full hand of cards
             for (int i = 0; i < _playersGame.NumberOfCardsInPlayersHand; i++)
             {
                 TakeNewCard();
             }
         }
-
-        public Player(List<Card> takenCards)
-        {
-            if (takenCards.Count != _playersGame.NumberOfCardsInPlayersHand)
-            {
-                throw new ArgumentException("Imposible number of cards on hand: " + takenCards.Count);
-            }
-            CardsOnHand = new List<CardOnHand>();
-            foreach (Card card in takenCards)
-            {
-                CardsOnHand.Add(new CardOnHand(card));
-            }
-        }
-
-    #endregion
+        
     #region Methods
         /// <summary>
         /// Refreshes accessibility level of color info about all cards
@@ -47,14 +32,15 @@ namespace my_console_project
             }
             for (int i = 0; i < CardsOnHand.Count; i++)
             {
-                if (!cardsNumbers[i]) continue;
-                if (CardsOnHand[i].CardInfoAvaliability == CardOnHand.CardInfoAvaliabilities.Rank)
+                if (!cardsNumbers[i])
                 {
-                    CardsOnHand[i].CardInfoAvaliability = CardOnHand.CardInfoAvaliabilities.All;
+                    // todo: illiminate color info
+                    bool illiminate = true;
                 }
-                else if (CardsOnHand[i].CardInfoAvaliability == CardOnHand.CardInfoAvaliabilities.None)
+                else
                 {
-                    CardsOnHand[i].CardInfoAvaliability = CardOnHand.CardInfoAvaliabilities.Color;
+                    // todo: add color info
+                    bool determine = true;
                 }
             }
         }
@@ -71,14 +57,15 @@ namespace my_console_project
             }
             for (int i = 0; i < CardsOnHand.Count; i++)
             {
-                if (!cardsNumbers[i]) continue;
-                if (CardsOnHand[i].CardInfoAvaliability == CardOnHand.CardInfoAvaliabilities.Color)
+                if (!cardsNumbers[i])
                 {
-                    CardsOnHand[i].CardInfoAvaliability = CardOnHand.CardInfoAvaliabilities.All;
+                    // todo: illiminate rank info
+                    bool illiminate = true;
                 }
-                else if (CardsOnHand[i].CardInfoAvaliability == CardOnHand.CardInfoAvaliabilities.None)
+                else
                 {
-                    CardsOnHand[i].CardInfoAvaliability = CardOnHand.CardInfoAvaliabilities.Rank;
+                    // todo: add rank info
+                    bool determine = true;
                 }
             }
         }
@@ -105,7 +92,7 @@ namespace my_console_project
         /// </summary>
         private void TakeNewCard()
         {
-            CardsOnHand.Add(new CardOnHand(_playersGame.TakeCardFromDeck()));
+            CardsOnHand.Add(new Card(_playersGame.TakeCardFromDeck()));
         }
 
     #endregion
