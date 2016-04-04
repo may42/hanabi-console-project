@@ -2,20 +2,36 @@
 
 namespace my_console_project
 {
-    class Hanabi
+    class Program
     {
-        // Точка входа в программу
         static void Main()
         {
             do
             {
-                Console.Clear();
-                Game theGame = new Game();
-                theGame.StartNewGame();
-                Console.WriteLine();
-                Console.WriteLine("Press any key to start new game.");
-                Console.WriteLine("Press Escape  to quit.");
-            } while (Console.ReadKey().Key != ConsoleKey.Escape);
+                try
+                {
+#if DEBUG
+                    Console.WriteLine("Creating new Game instance. Awaiting for Start-command");
+#endif
+                    Hanabi game = new Hanabi();
+                    // Содержимое метода StartNewGame я бы вообще добавил внутрь конструктора
+                    game.StartNewGame(Console.ReadLine());
+#if DEBUG
+                    Console.WriteLine("Game ended with OnGameOver() method");
+#endif
+                }
+                catch (ArgumentException e)
+                {
+                    Console.WriteLine(e.Message);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Sorry, game crashed! Unknown error: {0}\n{1}", e.GetType(), e.Message);
+#if DEBUG
+                    Console.WriteLine("Stack trace:\n{0}", e.StackTrace);
+#endif
+                }
+            } while (true);
         }
     }
 }

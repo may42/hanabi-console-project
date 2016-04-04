@@ -5,16 +5,16 @@ namespace my_console_project
 {
     class Player
     {
-        private readonly Game _playersGame;
-        public List<CardOnHand> CardsOnHands { get; private set; }
+        private readonly Hanabi _playersGame;
+        public List<CardOnHand> CardsOnHand { get; private set; }
 
     #region Constructors
-        public Player(Game game)
+        public Player(Hanabi game)
         {
             _playersGame = game;
-            CardsOnHands = new List<CardOnHand>();
+            CardsOnHand = new List<CardOnHand>();
             //takes full hand of cards
-            for (int i = 0; i < Game.CardsValueInPlayersHand; i++)
+            for (int i = 0; i < _playersGame.NumberOfCardsInPlayersHand; i++)
             {
                 TakeNewCard();
             }
@@ -22,14 +22,14 @@ namespace my_console_project
 
         public Player(List<Card> takenCards)
         {
-            if (takenCards.Count != Game.CardsValueInPlayersHand)
+            if (takenCards.Count != _playersGame.NumberOfCardsInPlayersHand)
             {
-                throw new ArgumentException("Invalid cards value.");
+                throw new ArgumentException("Imposible number of cards on hand: " + takenCards.Count);
             }
-            CardsOnHands = new List<CardOnHand>();
+            CardsOnHand = new List<CardOnHand>();
             foreach (Card card in takenCards)
             {
-                CardsOnHands.Add(new CardOnHand(card));
+                CardsOnHand.Add(new CardOnHand(card));
             }
         }
 
@@ -41,20 +41,20 @@ namespace my_console_project
         /// <param name = "cardsNumbers">Array of color access indicators</param>
         public void GetColorInfo(bool[] cardsNumbers)
         {
-            if (cardsNumbers.Length != CardsOnHands.Count)
+            if (cardsNumbers.Length != CardsOnHand.Count)
             {
-                throw new ArgumentException("Invalid value of cards.");
+                throw new ArgumentException("Color info array had wrong length: " + cardsNumbers.Length);
             }
-            for (int i = 0; i < CardsOnHands.Count; i++)
+            for (int i = 0; i < CardsOnHand.Count; i++)
             {
                 if (!cardsNumbers[i]) continue;
-                if (CardsOnHands[i].CardInfoAvaliability == CardOnHand.CardInfoAvaliabilities.Rank)
+                if (CardsOnHand[i].CardInfoAvaliability == CardOnHand.CardInfoAvaliabilities.Rank)
                 {
-                    CardsOnHands[i].CardInfoAvaliability = CardOnHand.CardInfoAvaliabilities.All;
+                    CardsOnHand[i].CardInfoAvaliability = CardOnHand.CardInfoAvaliabilities.All;
                 }
-                else if (CardsOnHands[i].CardInfoAvaliability == CardOnHand.CardInfoAvaliabilities.None)
+                else if (CardsOnHand[i].CardInfoAvaliability == CardOnHand.CardInfoAvaliabilities.None)
                 {
-                    CardsOnHands[i].CardInfoAvaliability = CardOnHand.CardInfoAvaliabilities.Color;
+                    CardsOnHand[i].CardInfoAvaliability = CardOnHand.CardInfoAvaliabilities.Color;
                 }
             }
         }
@@ -65,20 +65,20 @@ namespace my_console_project
         /// <param name = "cardsNumbers">Array of color access indicators</param>
         public void GetRankInfo(bool[] cardsNumbers)
         {
-            if (cardsNumbers.Length != CardsOnHands.Count)
+            if (cardsNumbers.Length != CardsOnHand.Count)
             {
-                throw new ArgumentException("Invalid value of cards.");
+                throw new ArgumentException("Rank info array had wrong length: " + cardsNumbers.Length);
             }
-            for (int i = 0; i < CardsOnHands.Count; i++)
+            for (int i = 0; i < CardsOnHand.Count; i++)
             {
                 if (!cardsNumbers[i]) continue;
-                if (CardsOnHands[i].CardInfoAvaliability == CardOnHand.CardInfoAvaliabilities.Color)
+                if (CardsOnHand[i].CardInfoAvaliability == CardOnHand.CardInfoAvaliabilities.Color)
                 {
-                    CardsOnHands[i].CardInfoAvaliability = CardOnHand.CardInfoAvaliabilities.All;
+                    CardsOnHand[i].CardInfoAvaliability = CardOnHand.CardInfoAvaliabilities.All;
                 }
-                else if (CardsOnHands[i].CardInfoAvaliability == CardOnHand.CardInfoAvaliabilities.None)
+                else if (CardsOnHand[i].CardInfoAvaliability == CardOnHand.CardInfoAvaliabilities.None)
                 {
-                    CardsOnHands[i].CardInfoAvaliability = CardOnHand.CardInfoAvaliabilities.Rank;
+                    CardsOnHand[i].CardInfoAvaliability = CardOnHand.CardInfoAvaliabilities.Rank;
                 }
             }
         }
@@ -89,11 +89,11 @@ namespace my_console_project
         /// <param name = "cardNumber">Number of card in hands, which is has to be dropped</param>
         public void DropAndTryTakeNewCard(int cardNumber)
         {
-            if (cardNumber < 0 || cardNumber >= CardsOnHands.Count)
+            if (cardNumber < 0 || cardNumber >= CardsOnHand.Count)
             {
-                throw new ArgumentException("Invalid card number");
+                throw new ArgumentException("Invalid card number: " + cardNumber);
             }
-            CardsOnHands.RemoveAt(cardNumber);
+            CardsOnHand.RemoveAt(cardNumber);
             if (_playersGame.Deck.Count > 0)
             {
                 TakeNewCard();
@@ -105,7 +105,7 @@ namespace my_console_project
         /// </summary>
         private void TakeNewCard()
         {
-            CardsOnHands.Add(new CardOnHand(_playersGame.GiveCard()));
+            CardsOnHand.Add(new CardOnHand(_playersGame.TakeCardFromDeck()));
         }
 
     #endregion
