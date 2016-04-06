@@ -3,10 +3,10 @@ using System.Text.RegularExpressions;
 
 namespace my_console_project
 {
+    /// <summary>Special exception class, for handling errors, caused by incorrect commands</summary>
     public class GameCommandException : ArgumentException
     {
         public GameCommandException()
-            : base()
         {
         }
         public GameCommandException(string message)
@@ -21,14 +21,35 @@ namespace my_console_project
 
     class Program
     {
-        private static Hanabi game;
+        static Hanabi game;
 
-        private static bool GameIsCurrentlyPlayed()
+        /// <summary>Checks if there is an active game at the moment</summary>
+        static bool GameIsCurrentlyPlayed()
         {
-            return game != null && game.GameIsActive;
+            return game != null && !game.GameIsFinished;
         }
 
-        private static Match ProcessCommand(string command, string pattern, string expected)
+        /// <summary>Display message in console without changing color</summary>
+        static void DisplayMessage(string message)
+        {
+            Console.WriteLine(message);
+        }
+
+        /// <summary>Display message in console using specific text color</summary>
+        static void DisplayMessage(string message, ConsoleColor messageColor)
+        {
+            Console.ForegroundColor = messageColor;
+            Console.WriteLine(message);
+            Console.ResetColor();
+        }
+
+        /// <summary>Parses game command and checks the validity of its format</summary>
+        /// <param name = "command">Parsed command</param>
+        /// <param name = "pattern">Regex format pattern, captures command parameters</param>
+        /// <param name = "expectedFormat">Expected format that will be placed as a message
+        /// in thrown GameCommandException, if command does not satisfy the pattern</param>
+        /// <returns>Match-object with command parameters</returns>
+        static Match ParseCommand(string command, string pattern, string expectedFormat)
         {
             if (!GameIsCurrentlyPlayed() && !command.StartsWith("Start"))
             {
@@ -37,55 +58,59 @@ namespace my_console_project
             Match match = new Regex(pattern).Match(command);
             if (!match.Success)
             {
-                throw new GameCommandException("Expected \"" + expected + "\", instead got: " + command);
+                throw new GameCommandException($"Expected \"{expectedFormat}\", instead got: \"{command}\"");
             }
             return match;
         }
 
-        private static void ParseAndRunCommand(string command)
+        /// <summary>Checks spelling of input commands, determines them and performs corresponding actions</summary>
+        /// <remarks>Most input-output formating is handled here</remarks>
+        /// <param name = "command">Input command</param>
+        static void ProcessAndRunCommand(string command)
         {
             Match match;
-            if (string.IsNullOrEmpty(command) || command == "esc" || command == "exit" || command == "quit" || command == "q")
+            if (string.IsNullOrEmpty(command) || command == "exit" || command == "quit" || command == "q")
             {
                 Environment.Exit(0);
             }
             else if (command.StartsWith("Start"))
             {
-                match = ProcessCommand(command, @"^Start new game with deck(( +\w+)+) *$", "Start new game with deck %ABBREVIATIONS%");
+                match = ParseCommand(command, @"^Start new game with deck(( +\w+)+) *$",
+                                                "Start new game with deck %ABBREVIATIONS%");
+                // This local variable is needed for correct detection of previous game termination.
                 Hanabi newGame = new Hanabi(match.Groups[1].ToString());
+                newGame.GameOver += s => DisplayMessage(newGame.Stats);
 #if DEBUG
-                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                if (GameIsCurrentlyPlayed()) Console.WriteLine("Previous game was terminated, new game was created");
-                Console.ResetColor();
-                //game.GameOver += reason => Console.WriteLine("Game over. Reason: {0}", reason);
-                newGame.GameOver += reason =>
-                {
-                    Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.WriteLine("Game over. Reason: {0}", reason);
-                    Console.ResetColor();
-                };
+                if (GameIsCurrentlyPlayed()) {
+                    DisplayMessage("Previous game was terminated, new game was created", ConsoleColor.DarkYellow);
+                }
+                DisplayMessage(newGame.DetailedStats, ConsoleColor.DarkCyan);
+                newGame.MovePerformed += () => DisplayMessage(newGame.DetailedStats, ConsoleColor.DarkCyan);
+                newGame.GameOver += reason => DisplayMessage("Game over. Reason: " + reason, ConsoleColor.DarkYellow);
+                newGame.RiskyMove += card => DisplayMessage($"Risky move {card.Color} {card.Rank}", ConsoleColor.Red);
 #endif
-                // Writing into separated local variable is needed for correct detection of previous game termination
                 game = newGame;
             }
             else if (command.StartsWith("Tell color"))
             {
-                match = ProcessCommand(command, @"^Tell color (\w+) for cards(( \d+)+) *$", "Tell color %COLOR_NAME% for cards %CARD_NUMBERS%");
+                match = ParseCommand(command, @"^Tell color (\w+) for cards(( \d+)+) *$",
+                                                "Tell color %COLOR_NAME% for cards %CARD_NUMBERS%");
                 game.TellColor(match.Groups[1].ToString(), match.Groups[2].ToString());
             }
             else if (command.StartsWith("Tell rank"))
             {
-                match = ProcessCommand(command, @"^Tell rank (\d+) for cards(( \d+)+) *$", "Tell rank %RANK_NO% for cards %CARD_NUMBERS%");
+                match = ParseCommand(command, @"^Tell rank (\d+) for cards(( \d+)+) *$",
+                                                "Tell rank %RANK_NUMBER% for cards %CARD_NUMBERS%");
                 game.TellRank(match.Groups[1].ToString(), match.Groups[2].ToString());
             }
             else if (command.StartsWith("Play card"))
             {
-                match = ProcessCommand(command, @"^Play card (\d+) *$", "Play card %CARD_NUMBER%");
+                match = ParseCommand(command, @"^Play card (\d+) *$", "Play card %CARD_NUMBER%");
                 game.PlayCard(match.Groups[1].ToString());
             }
             else if (command.StartsWith("Drop card"))
             {
-                match = ProcessCommand(command, @"^Drop card (\d+) *$", "Drop card %CARD_NUMBER%");
+                match = ParseCommand(command, @"^Drop card (\d+) *$", "Drop card %CARD_NUMBER%");
                 game.DropCard(match.Groups[1].ToString());
             }
             else
@@ -97,31 +122,34 @@ namespace my_console_project
         static void Main()
         {
 #if DEBUG
-            Console.WriteLine("Hanabi game is loaded, starting main command loop, awaiting for commands");
+            DisplayMessage("Hanabi game is loaded, starting main command loop, awaiting for commands",
+                ConsoleColor.DarkGreen);
 #endif
             while (true)
             {
                 try
                 {
-                    ParseAndRunCommand(Console.ReadLine());
+                    ProcessAndRunCommand(Console.ReadLine());
                 }
                 catch (GameCommandException e)
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine(e.Message);
-                    Console.ResetColor();
+                    DisplayMessage(e.Message, ConsoleColor.DarkRed);
                 }
                 catch (Exception e)
                 {
+                    DisplayMessage($"Game terminated because of exception: {e.GetType()}\n{e.Message}",
+                        ConsoleColor.Red);
+#if DEBUG
+                    DisplayMessage($"Stack trace:\n{e.StackTrace}", ConsoleColor.DarkGray);
+                    if (e.InnerException != null)
+                    {
+                        DisplayMessage($"Inner exception: {e.InnerException.GetType()}\n{e.InnerException.Message}",
+                            ConsoleColor.Red);
+                        DisplayMessage($"Inner exception stack trace:\n{e.InnerException.StackTrace}",
+                            ConsoleColor.DarkGray);
+                    }
+#endif
                     game = null;
-#if DEBUG
-                    Console.BackgroundColor = ConsoleColor.Red;
-#endif
-                    Console.WriteLine("Sorry, game crashed! Unknown error: {0}\n{1}", e.GetType(), e.Message);
-#if DEBUG
-                    Console.ResetColor();
-                    Console.WriteLine("Stack trace:\n{0}", e.StackTrace);
-#endif
                 }
             }
         }

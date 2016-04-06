@@ -1,235 +1,244 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Text.RegularExpressions;
 
 namespace my_console_project
 {
     class Hanabi
     {
-        public delegate void GameMethodsContainer(string info);
-        public event GameMethodsContainer GameOver = delegate { }; // Заглушка чтобы не проверять на null
+        #region Delegates & Events
 
-    #region Fields
+        public delegate void GameMethodContainer<T>(T param);
 
-        private readonly Player player1, player2;
+        public delegate void GameMethodContainer();
+
+        /// <summary>Fires when game is finished without errors</summary>
+        /// <remarks>Empty delegate avoids the need to check events for null</remarks>
+        public event GameMethodContainer<string> GameOver = delegate { };
+
+        /// <summary>Fires when risky move is played</summary>
+        /// <param>Provides played card as a parameter</param>
+        public event GameMethodContainer<Card> RiskyMove = delegate { };
+
+        /// <summary>Fires when card is played successfully, and the game continues</summary>
+        public event GameMethodContainer MovePerformed = delegate { };
+
+        #endregion
+        #region Fields
+
+        private readonly Player firstPlayer, secondPlayer;
         private Player currentActivePlayer, currentPassivePlayer;
-        // todo: init those fields with constructor:
-        public readonly int NumberOfCardsInPlayersHand = 5, RankLimit = 5, NumberOfColors = 5;
-        public readonly int MaxCardsAmountOnTable, MinCardsAmountInDeck;
+        private readonly Dictionary<Card.Colors, int> sequencesOnTheTable;
+        private readonly List<Card> deck;
+        public readonly int MaxCardsAmountOnTable, MinCardsAmountInDeck, MaxCardsOnHands = 5;
+        /// <summary>Current color sequences on the table</summary>
+        public readonly IReadOnlyDictionary<Card.Colors, int> SequencesOnTheTable;
+        /// <summary>Current deck</summary>
+        public readonly IReadOnlyList<Card> Deck;
 
-    #endregion
-    #region Props
+        #endregion
+        #region Props
 
-        public bool GameIsActive { get; private set; }
+        public bool GameIsFinished { get; private set; }
         public int CurrentTurn { get; private set; }
         public int SuccessfullyPlayedCards { get; private set; }
         public int MovesWithRisk { get; private set; }
-        public List<Card> Deck { get; }
 
-        public readonly Dictionary<Card.Colors, int> ColorSequences = new Dictionary<Card.Colors, int>();
+        /// <summary>Info about cards on hand of current active player</summary>
+        public string ActivePlayerCards => currentActivePlayer.ToString();
 
-    #endregion
-    #region Constructors
+        /// <summary>Info about cards on hand of current passive player</summary>
+        public string PassivePlayerCards => currentPassivePlayer.ToString();
 
-        /// <summary>
-        /// Starts new Hanabi game with diven deck
-        /// </summary>
-        /// <param name = "abbreviations">String, that contains all abbreviations of starting deck</param>
+        /// <summary>Info about the current top cards in the color sequences on the table</summary>
+        public string CardsOnTable => string.Join(" ", sequencesOnTheTable
+                                                              .Select(p => p.Key.ToString()[0] + p.Value.ToString()));
+
+        /// <summary>Info about current turn, number of played cards and risky cards</summary>
+        public string Stats => $"Turn: {CurrentTurn}, cards: {SuccessfullyPlayedCards}, with risk: {MovesWithRisk}";
+
+        /// <summary>Detailed game situation, player cards and cards on the table</summary>
+        public string DetailedStats => $"Turn: {CurrentTurn}, Score: {SuccessfullyPlayedCards}, " +
+                                       $"Finished: {GameIsFinished}\n  Current player: {ActivePlayerCards}\n     " +
+                                       $"Next player: {PassivePlayerCards}\n           Table: {CardsOnTable}";
+
+        #endregion
+        #region Constructors
+
+        /// <summary>Creates new Hanabi game with given cards in the deck</summary>
+        /// <param name = "abbreviations">String, that contains all abbreviations of the starting deck</param>
         public Hanabi(string abbreviations)
         {
-            CurrentTurn = SuccessfullyPlayedCards = MovesWithRisk = 0;
-            // На случай изменения максимального количества карт на руках кастомным конструктором:
-            MaxCardsAmountOnTable = RankLimit * NumberOfColors;
-            MinCardsAmountInDeck = NumberOfCardsInPlayersHand * 2 + 1;
-            Deck = new List<Card>();
-            FillDeck(abbreviations);
-            GameIsActive = true;
-            foreach (Card.Colors color in Enum.GetValues(typeof(Card.Colors)))
-            {
-                ColorSequences.Add(color, 0);
-            }
-            currentActivePlayer = player1 = new Player(this);
-            currentPassivePlayer = player2 = new Player(this);
-            // Подписка метода OnGameOver() на событие GameOver
-            GameOver += GameOverActions;
-#if DEBUG
-            ShowStatistics();
-#endif
+            MaxCardsAmountOnTable = Card.RankLimit * Card.NumberOfColors;
+            MinCardsAmountInDeck = MaxCardsOnHands*2 + 1;
+            deck = CreateDeck(abbreviations);
+            sequencesOnTheTable = Enum.GetValues(typeof (Card.Colors))
+                                      .Cast<Card.Colors>()
+                                      .Distinct()
+                                      .ToDictionary(color => color, c => 0);
+            currentActivePlayer = firstPlayer = new Player(deck.Take(MaxCardsOnHands));
+            currentPassivePlayer = secondPlayer = new Player(deck.Skip(MaxCardsOnHands)
+                                                                 .Take(MaxCardsOnHands));
+            deck = deck.Skip(MaxCardsOnHands*2).ToList();
+            Deck = new ReadOnlyCollection<Card>(deck);
+            SequencesOnTheTable = new ReadOnlyDictionary<Card.Colors, int>(sequencesOnTheTable);
+            GameOver += CloseGame;
+            MovePerformed += ChangeMove;
         }
 
-    #endregion
-    #region Private Methods
+        #endregion
+        #region Event Handlers
 
-        /// <summary>
-        /// Move exchange from fisrt player to second player, while game is played
-        /// </summary>
+        /// <summary>Performs last game actions, and closes the game</summary>
+        /// <param name = "info">Unused parameter, containing GameOver reason</param>
+        private void CloseGame(string info)
+        {
+            GameIsFinished = true;
+            MovePerformed();
+        }
+
+        /// <summary>Increments move, switches players</summary>
         private void ChangeMove()
         {
             CurrentTurn++;
-            currentActivePlayer = CurrentTurn % 2 == 0 ? player1 : player2;
-            currentPassivePlayer = CurrentTurn % 2 == 1 ? player1 : player2;
-#if DEBUG
-            Console.ForegroundColor = ConsoleColor.DarkGray;
-            ShowStatistics();
-            Console.ResetColor();
-#endif
+            currentActivePlayer = CurrentTurn % 2 == 0 ? firstPlayer : secondPlayer;
+            currentPassivePlayer = CurrentTurn % 2 == 1 ? firstPlayer : secondPlayer;
         }
 
-        /// <summary>
-        /// Check if it's possible to play card of given color and rank
-        /// </summary>
+        #endregion
+        #region Private Methods
+
+        /// <summary>Check if it's possible to play card of given color and rank</summary>
         /// <param name = "color">Color, which need to be checked</param>
         /// <param name = "rank">Rank, which need to be checked</param>
-        /// <returns><value>true</value> if card of given color and rank can be legally played, <value>false</value> otherwise</returns>
+        /// <returns><value>true</value> if such card can be legally played, <value>false</value> otherwise</returns>
         private bool CheckMoveAvaliability(Card.Colors color, int rank)
         {
-            if (!ColorSequences.ContainsKey(color))
+            if (!SequencesOnTheTable.ContainsKey(color))
             {
-                throw new ArgumentException("Failed to find this color in current sequences dictrionary: " + color);
+                throw new ArgumentException("Failed to find this color in current sequences dictionary: " + color);
             }
-            if (rank < 1 || rank > RankLimit)
+            if (rank < 1 || rank > Card.RankLimit)
             {
                 throw new ArgumentOutOfRangeException("Rank out of range: " + rank);
             }
-            return ColorSequences[color] + 1 == rank;
+            return SequencesOnTheTable[color] + 1 == rank;
         }
 
-        /// <summary>
-        /// Last game actions, berfore closing: increment current turn, display game results
-        /// </summary>
-        /// <param name = "info">Unused parameter, containg GameOver reason</param>
-        private void GameOverActions(string info)
-        {
-            CurrentTurn++;
-            GameIsActive = false;
-            ShowStatistics();
-        }
-
-        /// <summary>
-        /// Writes game results to console
-        /// </summary>
-        private void ShowStatistics()
-        {
-            // todo: replace this with method public string GiveStatistics() + event SuccessfulMove
-            Console.WriteLine("Turn: {0}, cards: {1}, with risk: {2}", CurrentTurn, SuccessfullyPlayedCards, MovesWithRisk);
-        }
-
-        /// <summary>
-        /// Filling deck with cards, written in input text
-        /// </summary>
-        /// <param name = "abbreviationsString">Text with cards abbreviations kind of <value>"R1"</value>, <value>"Y3"</value>, <value>"W4"</value>...</param>
-        private void FillDeck(string abbreviationsString)
+        /// <summary>Filling deck with cards, written in input text</summary>
+        /// <param name = "abbreviationsString">String, that contains cards abbreviations, separated by spaces</param>
+        private List<Card> CreateDeck(string abbreviationsString)
         {
             if (string.IsNullOrEmpty(abbreviationsString))
             {
                 throw new GameCommandException("Card abbreviations expected");
             }
-            string[] abbreviations = abbreviationsString.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            if (abbreviations.Length < MinCardsAmountInDeck)
+            List<Card> cards = Regex.Split(abbreviationsString, @" +")
+                                    .Where(abbreviation => abbreviation != "")
+                                    .Select(abbreviation => new Card(abbreviation))
+                                    .ToList();
+            if (cards.Count < MinCardsAmountInDeck)
             {
-                throw new GameCommandException("Expected deck to be at least " + MinCardsAmountInDeck + " cards long, instead got " + abbreviations.Length);
+                throw new GameCommandException(
+                    $"Expected at least {MinCardsAmountInDeck} cards, instead got {cards.Count}");
             }
-            foreach (string a in abbreviations)
-            {
-                Deck.Add(new Card(a));
-            }
+            return cards;
         }
 
-        /// <summary>
-        /// Incases high rank in color line of cards which was successfully played
-        /// </summary>
-        /// <param name = "color">Line of which color need to be changed</param>
-        private void IncraseLine(Card.Colors color)
+        /// <summary>Remove top card from the deck and return it</summary>
+        /// <returns>Top card of the deck</returns>
+        private Card GetNewCardFromDeck()
         {
-            if (!ColorSequences.ContainsKey(color))
+            if (deck.Count == 0)
             {
-                throw new ArgumentException("Failed to find this color in current sequences dictrionary: " + color);
+                throw new InvalidOperationException("Can't take cards from empty deck");
             }
-            if (ColorSequences[color] == RankLimit)
-            {
-                throw new InvalidOperationException("Cannot increase color sequence " + color + ", maximum rank " + RankLimit + " is reached!");
-            }
-            ColorSequences[color]++;
+            Card card = deck[0];
+            deck.RemoveAt(0);
+            return card;
         }
 
-        /// <summary>
-        /// Parsing string into array, containg card numbers
-        /// </summary>
-        /// <param name = "cardNumbersString">String containg one or multiple card numbers</param>
-        /// <returns>Array, containg one or multiple card numbers</returns>
-        private int[] ParseCardNumbers(string cardNumbersString)
+        /// <summary>Increases one of the color sequences on the table</summary>
+        /// <param name = "color">Color of the sequence that need to be increased</param>
+        private void IncreaseSequence(Card.Colors color)
+        {
+            if (!SequencesOnTheTable.ContainsKey(color))
+            {
+                throw new ArgumentException($"Failed to find {color}-color sequence on the table");
+            }
+            if (SequencesOnTheTable[color] == Card.RankLimit)
+            {
+                throw new InvalidOperationException(
+                    $"Can't increase {color}-color sequence, maximum rank {Card.RankLimit} is reached");
+            }
+            sequencesOnTheTable[color]++;
+        }
+
+        /// <summary>Parsing string, that contains single card number</summary>
+        private int ParseCardNumber(string cardNumberString)
+        {
+            if (string.IsNullOrEmpty(cardNumberString))
+            {
+                throw new GameCommandException("Card number string expected");
+            }
+            int cardNumber;
+            if (!int.TryParse(cardNumberString, out cardNumber))
+            {
+                throw new GameCommandException("Card number must be an integer: " + cardNumberString);
+            }
+            if (cardNumber < 0 || cardNumber >= MaxCardsOnHands)
+            {
+                throw new GameCommandException("Card number out of range: " + cardNumber);
+            }
+            return cardNumber;
+        }
+
+        /// <summary>Parsing string, that contains one or many card numbers</summary>
+        private int[] ParseMultipleCardNumbers(string cardNumbersString)
         {
             if (string.IsNullOrEmpty(cardNumbersString))
             {
                 throw new GameCommandException("Card number string expected");
             }
-            string[] stringsArray = cardNumbersString.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-            int[] result = new int[stringsArray.Length];
-            if (stringsArray.Length < 1)
+            int[] cardNumbers = Regex.Split(cardNumbersString, @" +")
+                                     .Where(str => str != "")
+                                     .Select(ParseCardNumber)
+                                     .ToArray();
+            if (cardNumbers.Length == 0)
             {
                 throw new GameCommandException("Expected at least one card number");
             }
-            for (int i = 0; i < stringsArray.Length; i++)
-            {
-                int n;
-                if (!int.TryParse(stringsArray[i], out n))
-                {
-                    throw new GameCommandException("Card number must be an integer: " + stringsArray[i]);
-                }
-                if (n < 0 || n >= NumberOfCardsInPlayersHand)
-                {
-                    throw new GameCommandException("Card number out of range: " + n);
-                }
-                result[i] = n;
-            }
-            return result;
+            return cardNumbers;
         }
 
-#endregion
-#region Public Methods
+        #endregion
+        #region Public Methods
 
-        // todo: turn into protected
-        /// <summary>
-        /// Remove top card from the deck and return it
-        /// </summary>
-        /// <returns>Deck's first card</returns>
-        public Card TakeCardFromDeck()
-        {
-            if (Deck.Count < 1)
-            {
-                throw new InvalidOperationException("Can't take new card from deck, deck is empty!");
-            }
-            Card card = Deck[0];
-            Deck.RemoveAt(0);
-            return card;
-        }
-
-        /// <summary>
-        /// Type of game move. Current active player takes card from his hands and puts it on the table, then takes a new card. If deck is empty - game ends
-        /// </summary>
+        /// <summary>Type of game move. Current active player puts one of his card
+        /// on the table and takes a new one. If deck is empty - game ends</summary>
         /// <param name = "cardString">String, that contains card number</param>
         public void PlayCard(string cardString)
         {
-            if (!GameIsActive) return;
-            int cardNumber = ParseCardNumbers(cardString)[0];
+            if (GameIsFinished) return;
+            int cardNumber = ParseCardNumber(cardString);
             Card card = currentActivePlayer.CardsOnHand[cardNumber];
             if (CheckMoveAvaliability(card.Color, card.Rank))
             {
                 SuccessfullyPlayedCards++;
-                IncraseLine(card.Color);
+                IncreaseSequence(card.Color);
                 // todo: check move for risk
                 if (false)
                 {
-#if DEBUG
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine(">>>Now was risky move, played card {0} {1}", card.Color, card.Rank);
-                    Console.ResetColor();
-#endif
                     MovesWithRisk++;
+                    RiskyMove(card);
                 }
-                currentActivePlayer.DropAndTryTakeNewCard(cardNumber);
+                currentActivePlayer.DropCard(cardNumber);
+                currentActivePlayer.TakeNewCard(GetNewCardFromDeck());
                 if (SuccessfullyPlayedCards == MaxCardsAmountOnTable) GameOver("Sequences are finished!");
-                else if (Deck.Count == 0) GameOver("Deck ended");
-                else ChangeMove();
+                else if (deck.Count == 0) GameOver("Deck ended");
+                else MovePerformed();
             }
             else
             {
@@ -237,45 +246,46 @@ namespace my_console_project
             }
         }
 
-        /// <summary>
-        /// Type of game move. Current active player removes card from his hands and takes a new card. If deck is empty - game ends
-        /// </summary>
+        /// <summary>Type of game move.
+        /// Current active player drops one of his cards and takes a new one.
+        /// If deck is empty - game ends</summary>
         /// <param name = "cardString">String that contains card number</param>
         public void DropCard(string cardString)
         {
-            if (!GameIsActive) return;
-            int cardNumber = ParseCardNumbers(cardString)[0];
-            currentActivePlayer.DropAndTryTakeNewCard(cardNumber);
-            if (Deck.Count > 0) ChangeMove();
-            else GameOver("Deck ended");
+            if (GameIsFinished) return;
+            int cardNumber = ParseCardNumber(cardString);
+            currentActivePlayer.DropCard(cardNumber);
+            currentActivePlayer.TakeNewCard(GetNewCardFromDeck());
+            if (deck.Count == 0) GameOver("Deck ended");
+            else MovePerformed();
         }
 
-        /// <summary>
-        /// Type of game move. Current active player tells to current passive player which of his cards have specific color
-        /// </summary>
+        /// <summary>Type of game move.
+        /// Current active player tells to current passive player which of his cards have specific color</summary>
         /// <param name = "colorName">Name of the color</param>
         /// <param name = "cardNumbersString">String that contains card numbers</param>
         public void TellColor(string colorName, string cardNumbersString)
         {
-            if (!GameIsActive) return;
-            Card.Colors color = Card.ColorParse(colorName);
-            int[] numbers = ParseCardNumbers(cardNumbersString);
-            if (currentPassivePlayer.ReceiveColorInfo(color, numbers)) ChangeMove();
-            else GameOver("Player told wrong cards"); // Maybe "Wrong cards were hinted" - more appropriate?
+            if (GameIsFinished) return;
+            Card.Colors color = Card.ParseColor(colorName);
+            int[] cardNumbers = ParseMultipleCardNumbers(cardNumbersString);
+            if (currentPassivePlayer.ReceiveColorHint(color, cardNumbers))
+            {
+                MovePerformed();
+            }
+            else GameOver("Player told wrong cards");
         }
 
-        /// <summary>
-        /// Type of game move. Current active player tells to current passive player which of his cards have specific rank
-        /// </summary>
+        /// <summary>Type of game move.
+        /// Current active player tells to current passive player which of his cards have specific rank</summary>
         /// <param name = "rankString">String that contains rank number</param>
         /// <param name = "cardNumbersString">String that contains card numbers</param>
         public void TellRank(string rankString, string cardNumbersString)
         {
-            if (!GameIsActive) return;
-            int rank = Card.RankParse(rankString);
-            int[] numbers = ParseCardNumbers(cardNumbersString);
-            // Try send info to currentPassivePlayer
-            if (currentPassivePlayer.TryReceiveRankInfo(rank, numbers)) ChangeMove();
+            if (GameIsFinished) return;
+            int rank = Card.ParseRank(rankString);
+            int[] cardNumbers = ParseMultipleCardNumbers(cardNumbersString);
+            if (currentPassivePlayer.ReceiveRankNumberHint(rank, cardNumbers)) MovePerformed();
             else GameOver("Player told wrong cards");
         }
 

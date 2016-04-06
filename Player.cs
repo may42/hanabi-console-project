@@ -1,150 +1,172 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 
 namespace my_console_project
 {
     class Player
     {
-        private readonly Hanabi playersGame;
-        public List<Card> CardsOnHand { get; }
-        
-        public Player(Hanabi game)
+        #region Fields
+
+        private readonly List<Card> cardsOnHand;
+
+        /// <summary>Readonly list of players cards</summary>
+        /// <remarks>All card manipulations are made through specialized player action methods</remarks>
+        public readonly IReadOnlyList<Card> CardsOnHand;
+
+        #endregion Fields
+        #region Constructors
+
+        /// <summary>Creates Player instance with given cards on hand</summary>
+        /// <remarks>Player doesn't monitor number of his cards. This responsibility lies entirely on Hanabi</remarks>
+        /// <param name = "initialCards">Initial player cards</param>
+        public Player(IEnumerable<Card> initialCards)
         {
-            playersGame = game;
-            CardsOnHand = new List<Card>();
-            //takes full hand of cards
-            for (int i = 0; i < playersGame.NumberOfCardsInPlayersHand; i++)
+            if (initialCards == null)
             {
-                TakeNewCard();
+                throw new ArgumentNullException(nameof(initialCards));
             }
+            if (initialCards.Any(card => card == null))
+            {
+                throw new ArgumentException("Player initial cards can't be null");
+            }
+            // Shallow copying is safe, because Card instances are unchangeable.
+            cardsOnHand = initialCards.ToList();
+            CardsOnHand = cardsOnHand.AsReadOnly();
         }
 
-    #region Private Methods
+        #endregion
+        #region Private Methods
 
-        /// <summary>
-        /// Takes new card from deck into player's hands
-        /// </summary>
-        private void TakeNewCard()
-        {
-            CardsOnHand.Add(playersGame.TakeCardFromDeck());
-        }
-
-        /// <summary>
-        /// Convert array of card numbers into array, that shows whether certain card number is given or not
-        /// </summary>
+        /// <summary>Converts array of card numbers into array, that
+        /// shows whether certain card is listed or not</summary>
+        /// <remarks>Duplicates are ignored</remarks>
         /// <param name = "cardNumbers">Array of card numbers</param>
-        /// <returns>Array that shows whether certain card number is given or not</returns>
-        private bool[] CheckCardNumbers(int[] cardNumbers)
+        /// <returns>Array that shows whether certain card number is
+        /// listed in <paramref name="cardNumbers"/> or not</returns>
+        private bool[] CheckWhichNumbersAreListed(int[] cardNumbers)
         {
             if (cardNumbers == null || cardNumbers.Length == 0)
             {
                 throw new ArgumentException("Expected at least one card number");
             }
-            bool[] checkedCards = new bool[CardsOnHand.Count];
+            var checkedCards = new bool[cardsOnHand.Count];
             foreach (int number in cardNumbers)
             {
-                if (number < 0 || number >= CardsOnHand.Count)
+                if (number < 0 || number >= cardsOnHand.Count)
                 {
-                    throw new ArgumentOutOfRangeException("Card number out of range: " + number);
+                    throw new ArgumentOutOfRangeException(nameof(cardNumbers));
                 }
-                // Duplicates are ignored
                 checkedCards[number] = true;
             }
             return checkedCards;
         }
 
-    #endregion
-    #region Public Methods
+        #endregion
+        #region Public Methods
 
-        /// <summary>
-        /// Drops specific card in player's hands and takes one more from deck, if deck isn't empty
-        /// </summary>
-        /// <param name = "cardNumber">Number of card in hands, which is has to be dropped</param>
-        public void DropAndTryTakeNewCard(int cardNumber)
+        /// <summary>Gives string representation of all cards on player's hand</summary>
+        /// <returns>Concatenation of all card abbreviations, separeted with spaces</returns>
+        public override string ToString()
         {
-            // ParseCardNumbers exception duplicate
-            if (cardNumber < 0 || cardNumber >= CardsOnHand.Count)
-            {
-                throw new ArgumentOutOfRangeException("Card number out of range: " + cardNumber);
-            }
-            CardsOnHand.RemoveAt(cardNumber);
-            TakeNewCard();
+            return string.Join(" ", cardsOnHand);
         }
 
-        /// <summary>
-        /// Receive hint about all cards that have certain color
-        /// </summary>
-        /// <param name = "hintedColor">Hinted color</param>
-        /// <param name = "hintedCardNumbers">Array of hinted card numbers</param>
-        /// <returns><value>false</value> if hint was wrong, <value>true</value> if hint was successful</returns>
-        public bool ReceiveColorInfo(Card.Colors hintedColor, int[] hintedCardNumbers)
+        /// <summary>Tells player to drop specific card</summary>
+        /// <param name = "cardNumber">Number of the card, that needs to be dropped</param>
+        public void DropCard(int cardNumber)
         {
-            /*if (hintedColor == null)
+            if (cardsOnHand.Count == 0)
             {
-                throw new ArgumentNullException(nameof(hintedColor));
+                throw new InvalidOperationException("Can't drop any cards, player has no cards");
             }
-            if (!Enum.IsDefined(typeof(Card.Colors), hintedColor))
+            if (cardNumber < 0 || cardNumber >= cardsOnHand.Count)
             {
-                throw new ArgumentException("Wrong cards has been hinted");
-            }*/
-            bool[] hintedCards = CheckCardNumbers(hintedCardNumbers);
-            for (int i = 0; i < CardsOnHand.Count; i++)
-            {
-                if (hintedCards[i] != (CardsOnHand[i].Color == hintedColor))
-                {
-                    //throw new GameCommandException("Wrong cards has been hinted");
-                    return false;
-                }
+                throw new ArgumentOutOfRangeException(nameof(cardNumber));
             }
-            foreach (bool hasColor in hintedCards)
+            cardsOnHand.RemoveAt(cardNumber);
+        }
+
+        /// <summary>Gives a new card to the player</summary>
+        /// <param name = "newCard">New card that will be placed last in players hands</param>
+        public void TakeNewCard(Card newCard)
+        {
+            if (newCard == null)
             {
-                if (!hasColor)
+                throw new ArgumentNullException(nameof(newCard));
+            }
+            cardsOnHand.Add(newCard);
+        }
+
+        /// <summary>Gives the player a hint about all cards that have certain color</summary>
+        /// <remarks>If <paramref name="colorHint"/> is out of <see cref="Card.Colors"/> enumerator range -
+        /// "received hint" is considered wrong and false is returned. Method can be easily modified to
+        /// throw a GameCommandException instead of returning false, when wrong hint is received.</remarks>
+        /// <param name = "colorHint">Reported color</param>
+        /// <param name = "cardNumbers">Non-empty array of reported card numbers</param>
+        /// <returns><value>true</value> if hint is accurate, <value>false</value> if hint is wrong</returns>
+        public bool ReceiveColorHint(Card.Colors colorHint, int[] cardNumbers)
+        {
+            if (cardsOnHand.Count == 0)
+            {
+                throw new InvalidOperationException("Player can't get any hints, player has no cards");
+            }
+            bool[] reportedCards = CheckWhichNumbersAreListed(cardNumbers);
+            bool[] actualCards = cardsOnHand.Select(card => card.Color == colorHint).ToArray();
+            if (!reportedCards.SequenceEqual(actualCards))
+            {
+                return false;
+            }
+            foreach (bool cardHasColor in reportedCards)
+            {
+                if (cardHasColor)
                 {
-                    // todo: add illiminated-color information
-                    bool illiminate = true;
+                    // todo: add determined-color information to risk calculation
+                    bool determine = true;
                 }
                 else
                 {
-                    // todo: add determined-color information
-                    bool determine = true;
+                    // todo: add illiminated-color information to risk calculation
+                    bool illiminate = true;
                 }
             }
             return true;
         }
 
-        /// <summary>
-        /// Receive hint about all cards that have certain rank
-        /// </summary>
-        /// <param name = "hintedRank">Hinted rank</param>
-        /// <param name = "hintedCardNumbers">Array of hinted card numbers</param>
-        /// <returns><value>false</value> if hint was wrong, <value>true</value> if hint was successful</returns>
-        public bool TryReceiveRankInfo(int hintedRank, int[] hintedCardNumbers)
+        /// <summary>Gives the player a hint about all cards that have certain rank</summary>
+        /// <remarks>If <paramref name="rankHint"/> is out of range -
+        /// "received hint" is considered wrong and false is returned</remarks>
+        /// <param name = "rankHint">Reported rank</param>
+        /// <param name = "cardNumbers">Non-empty array of reported card numbers</param>
+        /// <returns><value>true</value> if hint is accurate, <value>false</value> if hint is wrong</returns>
+        public bool ReceiveRankNumberHint(int rankHint, int[] cardNumbers)
         {
-            bool[] hintedCards = CheckCardNumbers(hintedCardNumbers);
-            for (int i = 0; i < CardsOnHand.Count; i++)
+            if (cardsOnHand.Count == 0)
             {
-                if (hintedCards[i] != (CardsOnHand[i].Rank == hintedRank))
-                {
-                    //throw new GameCommandException("Wrong cards has been hinted");
-                    return false;
-                }
+                throw new InvalidOperationException("Player can't get any hints, player has no cards");
             }
-            foreach (bool hasRank in hintedCards)
+            bool[] reportedCards = CheckWhichNumbersAreListed(cardNumbers);
+            bool[] actualCards = cardsOnHand.Select(card => card.Rank == rankHint).ToArray();
+            if (!reportedCards.SequenceEqual(actualCards))
             {
-                if (!hasRank)
+                return false;
+            }
+            foreach (bool cardHasRank in reportedCards)
+            {
+                if (cardHasRank)
                 {
-                    // todo: add illiminated-rank information
-                    bool illiminate = true;
+                    // todo: add determined-rank information to risk calculation
+                    bool determine = true;
                 }
                 else
                 {
-                    // todo: add determined-rank information
-                    bool determine = true;
+                    // todo: add illiminated-rank information to risk calculation
+                    bool illiminate = true;
                 }
             }
             return true;
         }
-        
-    #endregion
+
+        #endregion
     }
 }
