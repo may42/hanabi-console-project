@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Dynamic;
 
 namespace my_console_project
 {
@@ -12,9 +14,12 @@ namespace my_console_project
 
         /// <summary>Read-only list of players cards</summary>
         /// <remarks>All card manipulations are made through specialized player action methods</remarks>
-        public readonly IReadOnlyList<Card> CardsOnHand;
+        public readonly ReadOnlyCollection<Card> CardsOnHand;
 
-        #endregion Fields
+        #endregion
+        #region Props
+
+        #endregion
         #region Constructors
 
         /// <summary>Creates Player instance with given cards on hand</summary>
@@ -30,7 +35,7 @@ namespace my_console_project
             {
                 throw new ArgumentException("Player initial cards can't be null");
             }
-            // Shallow copying is safe, because Card instances are unchangeable.
+            // Shallow copying is safe, because Card instances are immutable.
             cardsOnHand = initialCards.ToList();
             CardsOnHand = cardsOnHand.AsReadOnly();
         }
@@ -165,6 +170,25 @@ namespace my_console_project
                 }
             }
             return true;
+        }
+        
+        /// <summary>Tells all of the player's guesses about the color of specific card</summary>
+        /// <param name = "cardNumber">Number of the card</param>
+        /// <returns>List of all possible colors of the card, from the viewpoint of the player</returns>
+        public List<Card.Colors> GiveColorGuesses(int cardNumber)
+        {
+            // todo GiveColorGuesses
+            return new List<Card.Colors>(){CardsOnHand[cardNumber].Color}; // заглушка
+        }
+
+        /// <summary>Check if the player knows the rank of a particular card with certainty</summary>
+        /// <param name = "cardNumber">Number of the card, that need to be checked</param>
+        /// <returns><value>true</value> if the player knows the rank of the
+        /// card with certainty, <value>false</value> otherwise</returns>
+        public bool RankIsDetermined(int cardNumber)
+        {
+            // todo RankIsDetermined
+            return true; // заглушка
         }
 
         #endregion

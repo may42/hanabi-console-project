@@ -87,7 +87,7 @@ namespace my_console_project
                 DisplayMessage(newGame.DetailedStats, ConsoleColor.DarkCyan);
                 newGame.MovePerformed += () => DisplayMessage(newGame.DetailedStats, ConsoleColor.DarkCyan);
                 newGame.GameOver += reason => DisplayMessage("Game over. Reason: " + reason, ConsoleColor.DarkYellow);
-                newGame.RiskyMove += card => DisplayMessage($"Risky move {card.Color} {card.Rank}", ConsoleColor.Red);
+                newGame.RiskyMove += info => DisplayMessage("Risky move " + info, ConsoleColor.Red);
 #endif
                 game = newGame;
             }

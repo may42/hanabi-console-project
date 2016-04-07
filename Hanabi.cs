@@ -19,10 +19,11 @@ namespace my_console_project
         public event GameMethodContainer<string> GameOver = delegate { };
 
         /// <summary>Fires when risky move is played</summary>
-        /// <param>Provides played card as a parameter</param>
-        public event GameMethodContainer<Card> RiskyMove = delegate { };
+        /// <param>Provides additional info about the risky move as a parameter</param>
+        public event GameMethodContainer<string> RiskyMove = delegate { };
 
-        /// <summary>Fires when card is played successfully, and the game continues</summary>
+        /// <summary>Fires when the player action is performed successfully</summary>
+        /// <remarks>That includes not only "Play card", but also "Drop card", "Tell color" and "Tell rank"</remarks>
         public event GameMethodContainer MovePerformed = delegate { };
 
         #endregion
@@ -30,13 +31,15 @@ namespace my_console_project
 
         private readonly Player firstPlayer, secondPlayer;
         private Player currentActivePlayer, currentPassivePlayer;
-        private readonly Dictionary<Card.Colors, int> sequencesOnTheTable;
         private readonly List<Card> deck;
+        private readonly Dictionary<Card.Colors, int> sequencesOnTheTable;
+
         public readonly int MaxCardsAmountOnTable, MinCardsAmountInDeck, MaxCardsOnHands = 5;
-        /// <summary>Current color sequences on the table</summary>
-        public readonly IReadOnlyDictionary<Card.Colors, int> SequencesOnTheTable;
         /// <summary>Current deck</summary>
-        public readonly IReadOnlyList<Card> Deck;
+        /// <remarks>Exposing card instances is safe, because they are immutable</remarks>
+        public readonly ReadOnlyCollection<Card> Deck;
+        /// <summary>Current color sequences on the table</summary>
+        public readonly ReadOnlyDictionary<Card.Colors, int> SequencesOnTheTable;
 
         #endregion
         #region Props
@@ -213,6 +216,37 @@ namespace my_console_project
             return cardNumbers;
         }
 
+        /// <summary>Checks whether it safe or risky to play a certain card for the current active player</summary>
+        /// <param name = "cardNumber">Position of the card in players hands</param>
+        /// <returns><value>true</value> if the move is guaranteed safe for the current active player,
+        /// <value>false</value> if the move is risky</returns>
+        private bool CheckMoveSafety(int cardNumber)
+        {
+            Card playedCard = currentActivePlayer.CardsOnHand[cardNumber];
+            return currentActivePlayer.RankIsDetermined(cardNumber) &&
+                   currentActivePlayer.GiveColorGuesses(cardNumber)
+                                      .All(color => CheckMoveAvaliability(color, playedCard.Rank));
+        }
+
+        /// <summary>Temporary method for detailed risk processing</summary>
+        private void ProcessRisk(int cardNumber)
+        {
+            Card card = currentActivePlayer.CardsOnHand[cardNumber];
+            bool rankIsDetermined = currentActivePlayer.RankIsDetermined(cardNumber);
+            if (!rankIsDetermined)
+            {
+                MovesWithRisk++;
+                RiskyMove($"{card.Color} {card.Rank} - player wasn't certain about the rank");
+                return;
+            }
+            List<Card.Colors> possibleColors = currentActivePlayer.GiveColorGuesses(cardNumber);
+            int numberOfMatching = possibleColors.Count(color => CheckMoveAvaliability(color, card.Rank));
+            if (numberOfMatching == possibleColors.Count) return;
+            MovesWithRisk++;
+            RiskyMove($"{card.Color} {card.Rank} - only {numberOfMatching} out of " +
+                      $"{possibleColors.Count} possible colors matched the sequences");
+        }
+
         #endregion
         #region Public Methods
 
@@ -224,26 +258,24 @@ namespace my_console_project
             if (GameIsFinished) return;
             int cardNumber = ParseCardNumber(cardString);
             Card card = currentActivePlayer.CardsOnHand[cardNumber];
-            if (CheckMoveAvaliability(card.Color, card.Rank))
-            {
-                SuccessfullyPlayedCards++;
-                IncreaseSequence(card.Color);
-                // todo: check move for risk
-                if (false)
-                {
-                    MovesWithRisk++;
-                    RiskyMove(card);
-                }
-                currentActivePlayer.DropCard(cardNumber);
-                currentActivePlayer.TakeNewCard(GetNewCardFromDeck());
-                if (SuccessfullyPlayedCards == MaxCardsAmountOnTable) GameOver("Sequences are finished!");
-                else if (deck.Count == 0) GameOver("Deck ended");
-                else MovePerformed();
-            }
-            else
+            if (!CheckMoveAvaliability(card.Color, card.Rank))
             {
                 GameOver("Card cannot be played");
+                return;
             }
+            //ProcessRisk(cardNumber);
+            if (!CheckMoveSafety(cardNumber))
+            {
+                MovesWithRisk++;
+                RiskyMove($"{card.Color} {card.Rank}");
+            }
+            SuccessfullyPlayedCards++;
+            IncreaseSequence(card.Color);
+            currentActivePlayer.DropCard(cardNumber);
+            currentActivePlayer.TakeNewCard(GetNewCardFromDeck());
+            if (SuccessfullyPlayedCards == MaxCardsAmountOnTable) GameOver("Sequences are finished!");
+            else if (deck.Count == 0) GameOver("Deck ended");
+            else MovePerformed();
         }
 
         /// <summary>Type of game move.

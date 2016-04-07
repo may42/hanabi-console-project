@@ -4,4 +4,5 @@ bin
 obj
 Properties
 App.config
-my-console-project*
+my-console-project.*
+*.dgml
