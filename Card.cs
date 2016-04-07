@@ -1,10 +1,17 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace my_console_project
 {
     class Card
     {
+        #region Static Fields
+
+        /// <summary>All possible card colors</summary>
+        /// <remarks>More colors can be added, provided that the first letter of each color is different.
+        /// If color has aliases - their first letters will be ignored</remarks>
         public enum Colors
         {
             Red,
@@ -13,118 +20,139 @@ namespace my_console_project
             Yellow,
             White
         }
-
-        private int _rank;
-
-        public static int RankLimit = 5;
-
-        public static Dictionary<char, Colors> ColorsByFirstLetter = new Dictionary<char, Colors>
-        {
-            { 'R', Colors.Red },
-            { 'G', Colors.Green },
-            { 'B', Colors.Blue },
-            { 'Y', Colors.Yellow },
-            { 'W', Colors.White }
-        };
         
-    #region Props
-        public Colors Color { get; }
+        public static readonly int RankLimit = 5;
+        public static readonly int NumberOfColors;
+        public static readonly int MaxAbbreviationLength = RankLimit.ToString().Length + 1;
+        public static readonly IReadOnlyDictionary<char, Colors> ColorsByFirstLetter;
 
-        public int Rank
+        #endregion
+        #region Props
+        
+        public Colors Color { get; }
+        public int Rank { get; }
+
+        #endregion
+        #region Constructors
+
+        /// <summary>Initializes static props, that depend on the <see cref="Colors"/> enumerator</summary>
+        /// <remarks>Throws an exception if two colors have same first letter.
+        /// Ignores the first letters of colors aliases</remarks>
+        static Card()
         {
-            get
+            try
             {
-                return _rank;
+                var colorsByFirstLetter = Enum
+                    .GetValues(typeof(Colors))
+                    .Cast<Colors>()
+                    .Distinct()
+                    .ToDictionary(col => col.ToString()[0], col => col);
+                ColorsByFirstLetter = new ReadOnlyDictionary<char, Colors>(colorsByFirstLetter);
+                NumberOfColors = ColorsByFirstLetter.Count;
             }
-            private set
+            catch (ArgumentException e)
             {
-                if (value < 1 || value > RankLimit)
-                {
-                    throw new ArgumentException("Card rank out of range: " + value);
-                }
-                _rank = value;
+                throw new ArgumentException("Two colors cant start with the same letter", e);
             }
         }
 
-    #endregion
-    #region Constructors
-        public Card(int cardRank, Colors cardColor)
+        /// <summary>Creates new card instance with given color and rank</summary>
+        public Card(Colors cardColor, int cardRank)
         {
+            if (!Enum.IsDefined(typeof(Colors), cardColor.ToString()))
+            {
+                throw new ArgumentOutOfRangeException(nameof(cardColor));
+            }
+            if (cardRank < 1 || cardRank > RankLimit)
+            {
+                throw new ArgumentOutOfRangeException(nameof(cardRank));
+            }
             Color = cardColor;
             Rank = cardRank;
         }
 
-        public Card(string abbreviation)
+        /// <summary>Creates new card instance using given card abbreviation</summary>
+        /// <param name="cardAbbreviation">String of the form "CR" where C is first letter of cards color and
+        /// R is cards rank. For example: <value>"G1"</value>, <value>"B5"</value>, <value>"W2"</value></param>
+        public Card(string cardAbbreviation)
         {
-            if (abbreviation.Length != 2)
+            if (string.IsNullOrEmpty(cardAbbreviation))
             {
-                throw new ArgumentException("Incorrect card abbreviation length: " + abbreviation.Length);
+                throw new GameCommandException("Card abbreviation expected");
             }
-            Color = ColorParse(abbreviation[0]);
-            Rank = RankParse(abbreviation.Substring(1));
+            if (cardAbbreviation.Length < 2) {
+                throw new GameCommandException(
+                    $"Card abbreviation must be at least 2 symbols long: {cardAbbreviation}");
+            }
+            if (cardAbbreviation.Length > MaxAbbreviationLength)
+            {
+                throw new GameCommandException(
+                    $"Card abbreviation cant be more than {MaxAbbreviationLength} symbols long: {cardAbbreviation}");
+            }
+            Color = ParseColor(cardAbbreviation[0]);
+            Rank = ParseRank(cardAbbreviation.Substring(1));
         }
 
-        public Card(Card card)
+        #endregion
+        #region Methods
+
+        /// <summary>Gives card abbreviation string</summary>
+        /// <returns>String of the form "CR" where C is first letter of cards color and R is cards rank.
+        /// For example: <value>"G1"</value>, <value>"B5"</value>, <value>"W2"</value></returns>
+        public override string ToString()
         {
-            Color = card.Color;
-            Rank = card.Rank;
+            return Color.ToString()[0].ToString() + Rank;
         }
 
-    #endregion
-    #region Methods
-
-        /// <summary>
-        /// Parsing string into color
-        /// </summary>
-        /// <param name = "colorAbbreviation">One-symbol abbreviation of color, kind of: <value>'R'</value>, <value>'Y'</value>, <value>'W'</value>...</param>
+        /// <summary>Parses first character of a color name</summary>
+        /// <param name = "firstLetterOfAColor">One-symbol abbreviation of color, for example:
+        /// <value>'R'</value>, <value>'Y'</value>, <value>'W'</value></param>
         /// <returns>Card color</returns>
-        public static Colors ColorParse(char colorAbbreviation)
+        public static Colors ParseColor(char firstLetterOfAColor)
         {
-            if (!ColorsByFirstLetter.ContainsKey(colorAbbreviation))
+            if (!ColorsByFirstLetter.ContainsKey(firstLetterOfAColor))
             {
-                throw new ArgumentException("Incorrect card color abbreviation: " + colorAbbreviation);
+                throw new GameCommandException("Unknown card color abbreviation: " + firstLetterOfAColor);
             }
-            return ColorsByFirstLetter[colorAbbreviation];
+            return ColorsByFirstLetter[firstLetterOfAColor];
         }
 
-        /// <summary>
-        /// Parsing string into color
-        /// </summary>
-        /// <param name = "color">Full color name. Kind of: <value>"Yellow"</value>, <value>"Red"</value>, <value>"White"</value>...</param>
+        /// <summary>Parses full string name of a color</summary>
+        /// <param name = "colorName">Full color name, for example:
+        /// <value>"Red"</value>, <value>"Yellow"</value>, <value>"White"</value></param>
         /// <returns>Card color</returns>
-        public static Colors ColorParse(string color)
+        public static Colors ParseColor(string colorName)
         {
-            if (string.IsNullOrEmpty(color))
+            if (string.IsNullOrEmpty(colorName))
             {
-                throw new ArgumentException("Color string expected");
+                throw new GameCommandException("Color name expected");
             }
-            return ColorParse(color[0]);
+            if (!Enum.IsDefined(typeof(Colors), colorName))
+            {
+                throw new GameCommandException("Unknown color name: " + colorName);
+            }
+            return (Colors)Enum.Parse(typeof(Colors), colorName);
         }
 
-        /// <summary>
-        /// Parsing string into rank integer
-        /// </summary>
-        /// <param name = "rank">String containg card rank integer</param>
+        /// <summary>Parses rank string</summary>
+        /// <param name = "rank">String containing card rank integer</param>
         /// <returns>Card rank integer</returns>
-        public static int RankParse(string rank)
+        public static int ParseRank(string rank)
         {
             if (string.IsNullOrEmpty(rank))
             {
-                throw new ArgumentException("Rank string expected");
+                throw new GameCommandException("Rank string expected");
             }
-            try
+            int r;
+            if (!int.TryParse(rank, out r))
             {
-                int r = int.Parse(rank);
-                if (r < 1 || r > RankLimit)
-                {
-                    throw new ArgumentException("Card rank out of range: " + r);
-                }
-                return r;
+                throw new GameCommandException("Card rank must be an integer: " + rank);
             }
-            catch (FormatException e)
+            if (r < 1 || r > RankLimit)
             {
-                throw new ArgumentException("Incorrect card rank: " + rank, e);
+                throw new GameCommandException("Card rank out of range: " + r);
             }
+            return r;
         }
 
     #endregion
