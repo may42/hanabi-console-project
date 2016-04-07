@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace my_console_project
 {
     /// <summary>Special exception class, for handling errors, caused by incorrect commands</summary>
-    public class GameCommandException : ArgumentException
+    class GameCommandException : ArgumentException
     {
         public GameCommandException()
         {

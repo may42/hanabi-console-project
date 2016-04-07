@@ -10,7 +10,7 @@ namespace my_console_project
 
         private readonly List<Card> cardsOnHand;
 
-        /// <summary>Readonly list of players cards</summary>
+        /// <summary>Read-only list of players cards</summary>
         /// <remarks>All card manipulations are made through specialized player action methods</remarks>
         public readonly IReadOnlyList<Card> CardsOnHand;
 
@@ -66,7 +66,7 @@ namespace my_console_project
         #region Public Methods
 
         /// <summary>Gives string representation of all cards on player's hand</summary>
-        /// <returns>Concatenation of all card abbreviations, separeted with spaces</returns>
+        /// <returns>Concatenation of all card abbreviations, separated with spaces</returns>
         public override string ToString()
         {
             return string.Join(" ", cardsOnHand);
@@ -126,8 +126,8 @@ namespace my_console_project
                 }
                 else
                 {
-                    // todo: add illiminated-color information to risk calculation
-                    bool illiminate = true;
+                    // todo: add eliminated-color information to risk calculation
+                    bool eliminate = true;
                 }
             }
             return true;
@@ -160,8 +160,8 @@ namespace my_console_project
                 }
                 else
                 {
-                    // todo: add illiminated-rank information to risk calculation
-                    bool illiminate = true;
+                    // todo: add eliminated-rank information to risk calculation
+                    bool eliminate = true;
                 }
             }
             return true;

@@ -17,8 +17,8 @@ namespace my_console_project
             Red,
             Green,
             Blue,
-            Yellow,
-            White
+            White,
+            Yellow
         }
         
         public static readonly int RankLimit = 5;
