@@ -216,35 +216,25 @@ namespace my_console_project
             return cardNumbers;
         }
 
-        /// <summary>Checks whether it safe or risky to play a certain card for the current active player</summary>
+        /// <summary>Checks whether risky to play a certain card for the current active player</summary>
         /// <param name = "cardNumber">Position of the card in players hands</param>
-        /// <returns><value>true</value> if the move is guaranteed safe for the current active player,
-        /// <value>false</value> if the move is risky</returns>
-        private bool CheckMoveSafety(int cardNumber)
-        {
-            Card playedCard = currentActivePlayer.CardsOnHand[cardNumber];
-            return currentActivePlayer.RankIsDetermined(cardNumber) &&
-                   currentActivePlayer.GiveColorGuesses(cardNumber)
-                                      .All(color => CheckMoveAvaliability(color, playedCard.Rank));
-        }
-
-        /// <summary>Temporary method for detailed risk processing</summary>
         private void ProcessRisk(int cardNumber)
         {
             Card card = currentActivePlayer.CardsOnHand[cardNumber];
-            bool rankIsDetermined = currentActivePlayer.RankIsDetermined(cardNumber);
-            if (!rankIsDetermined)
+            if (!currentActivePlayer.CheckIfRankIsDetermined(cardNumber))
             {
                 MovesWithRisk++;
                 RiskyMove($"{card.Color} {card.Rank} - player wasn't certain about the rank");
                 return;
             }
+            if (currentActivePlayer.CheckIfColorIsDetermined(cardNumber)) return;
+            // Actual card color is not included in possibleColors list.
             List<Card.Colors> possibleColors = currentActivePlayer.GiveColorGuesses(cardNumber);
             int numberOfMatching = possibleColors.Count(color => CheckMoveAvaliability(color, card.Rank));
             if (numberOfMatching == possibleColors.Count) return;
             MovesWithRisk++;
-            RiskyMove($"{card.Color} {card.Rank} - only {numberOfMatching} out of " +
-                      $"{possibleColors.Count} possible colors matched the sequences");
+            RiskyMove($"{card.Color} {card.Rank} - only {numberOfMatching + 1} out of " +
+                      $"{possibleColors.Count + 1} possible colors matched the sequences");
         }
 
         #endregion
@@ -263,12 +253,7 @@ namespace my_console_project
                 GameOver("Card cannot be played");
                 return;
             }
-            //ProcessRisk(cardNumber);
-            if (!CheckMoveSafety(cardNumber))
-            {
-                MovesWithRisk++;
-                RiskyMove($"{card.Color} {card.Rank}");
-            }
+            ProcessRisk(cardNumber);
             SuccessfullyPlayedCards++;
             IncreaseSequence(card.Color);
             currentActivePlayer.DropCard(cardNumber);
