@@ -5,13 +5,16 @@ using System.Collections.ObjectModel;
 
 namespace my_console_project
 {
+    /// <summary>Common Hanabi card type</summary>
+    /// <remarks>Lack of the properties set-accessors makes this
+    /// class immutable everywhere except the constructor</remarks>
     class Card
     {
         #region Static Fields
 
         /// <summary>All possible card colors</summary>
         /// <remarks>More colors can be added, provided that the first letter of each color is different.
-        /// If color has aliases - their first letters will be ignored</remarks>
+        /// If color has aliases (for example <code>red = Red</code>) - their first letters will be ignored</remarks>
         public enum Colors
         {
             Red,
@@ -25,13 +28,13 @@ namespace my_console_project
         public static readonly int NumberOfColors;
         public static readonly int MaxAbbreviationLength = RankLimit.ToString().Length + 1;
         public static readonly IReadOnlyDictionary<char, Colors> ColorsByFirstLetter;
-
+        
         #endregion
         #region Props
         
         public Colors Color { get; }
         public int Rank { get; }
-
+        
         #endregion
         #region Constructors
 

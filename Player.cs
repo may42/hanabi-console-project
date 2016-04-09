@@ -2,87 +2,111 @@
 using System.Linq;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Dynamic;
 
 namespace my_console_project
 {
     class Player
     {
         #region Nested-Classes
+        
+        /// <summary>Special type used by the player for storing card
+        /// information, gained from the hints of the other player</summary>
+        /// <remarks>This type allows to conceal properties set-accessors and sensitive methods of
+        /// the <see cref="PlayerCardInfo"/> class, and safely expose it as a public field</remarks>
+        public interface IPlayerCardInfo
+        {
+            /// <summary>List of all possible card colors, from the viewpoint
+            /// of the player, except the actual color of the card</summary>
+            /// <remarks>Actual color of the card is not included for the code simplicity</remarks>
+            ReadOnlyCollection<Card.Colors> PossibleColors { get; }
 
-        /// todo: PlayersCard documentation
-        /// <summary></summary>
-        /// <remarks></remarks>
-        private class PlayerCardInfo
+            /// <summary>List of all possible card ranks, from the viewpoint
+            /// of the player, except the actual rank of the card</summary>
+            /// <remarks>Actual rank of the card is not included for the code simplicity</remarks>
+            ReadOnlyCollection<int> PossibleRanks { get; }
+
+            /// <summary>Property, that shows, whether player determined color of the card, or not</summary>
+            bool ColorIsDetermined { get; }
+
+            /// <summary>Property, that shows, whether player determined rank of the card, or not</summary>
+            bool RankIsDetermined { get; }
+        }
+
+        /// <summary>Special private class used by the player for managing
+        /// card information, gained from the hints of the other player</summary>
+        /// <remarks>All methods and property accessors that are not declared in the
+        /// <see cref="IPlayerCardInfo"/> are concealed in the <see cref="KnownCardInfo"/></remarks>
+        private class PlayerCardInfo : IPlayerCardInfo
         {
             #region Fields
 
-            /// <summary></summary>
-            /// <remarks></remarks>
-            private static readonly List<int> AllRanks;
-            /// <summary></summary>
-            /// <remarks></remarks>
+            /// <summary>List that contains all existing card colors</summary>
+            /// <remarks>Needed for fast <see cref="PossibleColors"/> initialization</remarks>
             private static readonly List<Card.Colors> AllColors;
-            /// <summary></summary>
-            /// <remarks></remarks>
+            /// <summary>List that contains all existing card ranks</summary>
+            /// <remarks>Needed for fast <see cref="PossibleRanks"/> initialization</remarks>
+            private static readonly List<int> AllRanks;
+            /// <summary>Card reference, needed for not allowing actual info elimination</summary>
             private readonly Card card;
 
-            /// <summary></summary>
-            /// <remarks></remarks>
-            public List<int> PossibleRanks;
-            /// <summary></summary>
-            /// <remarks></remarks>
-            public List<Card.Colors> PossibleColors;
+            /// <summary>List of all possible card colors, except the actual rank of the card</summary>
+            public readonly List<Card.Colors> possibleColors;
+            /// <summary>List of all possible card ranks, except the actual rank of the card</summary>
+            public readonly List<int> possibleRanks;
 
             #endregion
             #region Props
 
-            /// <summary></summary>
-            /// <remarks></remarks>
-            public bool RankIsDetermined { get; set; }
-
-            /// <summary></summary>
-            /// <remarks></remarks>
+            /// <summary>Wrapper for the possible card colors, will be used in <see cref="IPlayerCardInfo"/></summary>
+            public ReadOnlyCollection<Card.Colors> PossibleColors { get; }
+            /// <summary>Wrapper for the possible card ranks, will be used in <see cref="IPlayerCardInfo"/></summary>
+            public ReadOnlyCollection<int> PossibleRanks { get; }
+            /// <summary>Property, that shows, whether player determined color of the card, or not</summary>
             public bool ColorIsDetermined { get; set; }
+            /// <summary>Property, that shows, whether player determined rank of the card, or not</summary>
+            public bool RankIsDetermined { get; set; }
 
             #endregion
             #region Constructors
 
-            /// <summary></summary>
-            /// <remarks></remarks>
+            /// <summary>Initializes static fields <see cref="AllRanks"/> and <see cref="AllColors"/></summary>
             static PlayerCardInfo()
             {
+                AllColors = Enum.GetValues(typeof(Card.Colors))
+                                .Cast<Card.Colors>()
+                                .Distinct()
+                                .ToList();
                 AllRanks = new List<int>();
                 for (int i = 1; i <= Card.RankLimit; i++)
                 {
                     AllRanks.Add(i);
                 }
-                AllColors = Enum.GetValues(typeof(Card.Colors))
-                                .Cast<Card.Colors>()
-                                .Distinct()
-                                .ToList();
             }
 
-            /// <summary></summary>
-            /// <remarks></remarks>
+            /// <summary>Creates new PlayerCardInfo instance for the given card</summary>
+            /// <param name = "card">Card, which information will be stored</param>
+            /// <remarks>Throws an exception if card is null, which is handy for Player initialization</remarks>
             public PlayerCardInfo(Card card)
             {
                 if (card == null)
                 {
-                    throw new ArgumentException("Player initial cards can't be null");
+                    throw new ArgumentNullException(nameof(card));
                 }
                 this.card = card;
-                PossibleColors = AllColors.Where(color => color != card.Color)
+                possibleColors = AllColors.Where(color => color != card.Color)
                                           .ToList();
-                PossibleRanks = AllRanks.Where(rank => rank != card.Rank)
+                possibleRanks = AllRanks.Where(rank => rank != card.Rank)
                                         .ToList();
+                PossibleColors = new ReadOnlyCollection<Card.Colors>(possibleColors);
+                PossibleRanks = new ReadOnlyCollection<int>(possibleRanks);
             }
 
             #endregion
             #region Methods
 
-            /// <summary></summary>
-            /// <remarks>Does nothing if color is already eliminated</remarks>
+            /// <summary>Player eliminates one of the possible colors of the card</summary>
+            /// <remarks>Does nothing if the color is already eliminated, Throws an
+            /// error if player tries to eliminate actual color of the card</remarks>
             public void EliminateColor(Card.Colors color)
             {
                 if (color == card.Color)
@@ -90,14 +114,15 @@ namespace my_console_project
                     throw new InvalidOperationException("Cant eliminate actual card color: " + color);
                 }
                 if (ColorIsDetermined) return;
-                PossibleColors.Remove(color);
-                if (PossibleColors.Count > 0) return;
+                possibleColors.Remove(color);
+                if (possibleColors.Count > 0) return;
+                possibleColors.TrimExcess();
                 ColorIsDetermined = true;
-                PossibleColors = null;
             }
 
-            /// <summary></summary>
-            /// <remarks>Does nothing if rank is already eliminated</remarks>
+            /// <summary>Player eliminates one of the possible ranks of the card</summary>
+            /// <remarks>Does nothing if the rank is already eliminated, Throws an
+            /// error if player tries to eliminate actual rank of the card</remarks>
             public void EliminateRank(int rank)
             {
                 if (rank == card.Rank)
@@ -105,10 +130,10 @@ namespace my_console_project
                     throw new InvalidOperationException("Cant eliminate actual card rank: " + rank);
                 }
                 if (RankIsDetermined) return;
-                PossibleRanks.Remove(rank);
-                if (PossibleRanks.Count > 0) return;
+                possibleRanks.Remove(rank);
+                if (possibleRanks.Count > 0) return;
+                possibleRanks.TrimExcess();
                 RankIsDetermined = true;
-                PossibleRanks = null;
             }
 
             #endregion
@@ -119,13 +144,16 @@ namespace my_console_project
 
         /// <summary>List of player cards</summary>
         private readonly List<Card> cardsOnHand;
-
         /// <summary>List of all the information that player knows about his cards</summary>
         private readonly List<PlayerCardInfo> knownCardInfo;
 
         /// <summary>Read-only list of players cards</summary>
         /// <remarks>All card manipulations are made through specialized player action methods</remarks>
         public readonly ReadOnlyCollection<Card> CardsOnHand;
+        /// <summary>List of all the information that player knows about his cards</summary>
+        /// <remarks>Uses covariance to upcast parameter PlayerCardInfo to its interface
+        /// IPlayerCardInfo, thus, protecting its public fields</remarks>
+        public readonly IReadOnlyCollection<IPlayerCardInfo> KnownCardInfo;
 
         #endregion
         #region Constructors
@@ -144,6 +172,8 @@ namespace my_console_project
             CardsOnHand = cardsOnHand.AsReadOnly();
             knownCardInfo = cardsOnHand.Select(card => new PlayerCardInfo(card))
                                        .ToList();
+            // Covariance-magic in action.
+            KnownCardInfo = knownCardInfo.AsReadOnly();
         }
 
         #endregion
@@ -235,7 +265,8 @@ namespace my_console_project
                 if (reportedCards[i])
                 {
                     knownCardInfo[i].ColorIsDetermined = true;
-                    knownCardInfo[i].PossibleColors = null;
+                    knownCardInfo[i].possibleColors.Clear();
+                    knownCardInfo[i].possibleColors.TrimExcess();
                 }
                 else
                 {
@@ -251,7 +282,7 @@ namespace my_console_project
         /// <param name = "rankHint">Reported rank</param>
         /// <param name = "cardNumbers">Non-empty array of reported card numbers</param>
         /// <returns><value>true</value> if hint is accurate, <value>false</value> if hint is wrong</returns>
-        public bool ReceiveRankNumberHint(int rankHint, int[] cardNumbers)
+        public bool ReceiveRankHint(int rankHint, int[] cardNumbers)
         {
             if (cardsOnHand.Count == 0)
             {
@@ -268,7 +299,8 @@ namespace my_console_project
                 if (reportedCards[i])
                 {
                     knownCardInfo[i].RankIsDetermined = true;
-                    knownCardInfo[i].PossibleRanks = null;
+                    knownCardInfo[i].possibleRanks.Clear();
+                    knownCardInfo[i].possibleColors.TrimExcess();
                 }
                 else
                 {
@@ -276,33 +308,6 @@ namespace my_console_project
                 }
             }
             return true;
-        }
-        
-        /// <summary>Tells all of the player's guesses about the color of
-        /// specific card, except the actual color of the card</summary>
-        /// <param name = "cardNumber">Number of the card in player hands</param>
-        /// <returns>List of all possible colors of the card, from the viewpoint of the player</returns>
-        public List<Card.Colors> GiveColorGuesses(int cardNumber)
-        {
-            return knownCardInfo[cardNumber].PossibleColors.ToList();
-        }
-
-        /// <summary>Check if the player knows the color of a particular card with certainty</summary>
-        /// <param name = "cardNumber">Number of the card, that need to be checked</param>
-        /// <returns><value>true</value> if the player knows the color of the
-        /// card with certainty, <value>false</value> otherwise</returns>
-        public bool CheckIfColorIsDetermined(int cardNumber)
-        {
-            return knownCardInfo[cardNumber].ColorIsDetermined;
-        }
-
-        /// <summary>Check if the player knows the rank of a particular card with certainty</summary>
-        /// <param name = "cardNumber">Number of the card, that need to be checked</param>
-        /// <returns><value>true</value> if the player knows the rank of the
-        /// card with certainty, <value>false</value> otherwise</returns>
-        public bool CheckIfRankIsDetermined(int cardNumber)
-        {
-            return knownCardInfo[cardNumber].RankIsDetermined;
         }
 
         #endregion

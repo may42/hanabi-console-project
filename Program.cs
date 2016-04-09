@@ -64,7 +64,7 @@ namespace my_console_project
         }
 
         /// <summary>Checks spelling of input commands, determines them and performs corresponding actions</summary>
-        /// <remarks>Most input-output formating is handled here</remarks>
+        /// <remarks>Most input-output formatting is handled here</remarks>
         /// <param name = "command">Input command</param>
         static void ProcessAndRunCommand(string command)
         {
