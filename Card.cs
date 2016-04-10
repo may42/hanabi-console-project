@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 
 namespace my_console_project
 {
-    /// <summary>Common Hanabi card type</summary>
+    /// <summary>Common type of a Hanabi playing card</summary>
     /// <remarks>Lack of the properties set-accessors makes this
     /// class immutable everywhere except the constructor</remarks>
     class Card
@@ -13,8 +13,8 @@ namespace my_console_project
         #region Static Fields
 
         /// <summary>All possible card colors</summary>
-        /// <remarks>More colors can be added, provided that the first letter of each color is different.
-        /// If color has aliases (for example <code>red = Red</code>) - their first letters will be ignored</remarks>
+        /// <remarks>More colors can be added, provided that the first letter of each color is different. If color
+        /// has aliases, for example: <code>red = Red</code>, - their first letters will be ignored</remarks>
         public enum Colors
         {
             Red,
@@ -27,13 +27,17 @@ namespace my_console_project
         public static readonly int RankLimit = 5;
         public static readonly int NumberOfColors;
         public static readonly int MaxAbbreviationLength = RankLimit.ToString().Length + 1;
-        public static readonly IReadOnlyDictionary<char, Colors> ColorsByFirstLetter;
+        /// <summary>Dictionary that helps to get the color from its first letter</summary>
+        public static readonly ReadOnlyDictionary<char, Colors> ColorsByFirstLetter;
         
         #endregion
         #region Props
         
         public Colors Color { get; }
         public int Rank { get; }
+
+        /// <summary>Gives card abbreviation string</summary>
+        public string Abbreviation => Color.ToString()[0].ToString() + Rank;
         
         #endregion
         #region Constructors
@@ -45,11 +49,11 @@ namespace my_console_project
         {
             try
             {
-                var colorsByFirstLetter = Enum
-                    .GetValues(typeof(Colors))
-                    .Cast<Colors>()
-                    .Distinct()
-                    .ToDictionary(col => col.ToString()[0], col => col);
+                Dictionary<char, Colors> colorsByFirstLetter = Enum
+                                            .GetValues(typeof(Colors))
+                                            .Cast<Colors>()
+                                            .Distinct()
+                                            .ToDictionary(col => col.ToString()[0], col => col);
                 ColorsByFirstLetter = new ReadOnlyDictionary<char, Colors>(colorsByFirstLetter);
                 NumberOfColors = ColorsByFirstLetter.Count;
             }
@@ -59,7 +63,7 @@ namespace my_console_project
             }
         }
 
-        /// <summary>Creates new card instance with given color and rank</summary>
+        /// <summary>Creates a new card instance with given color and rank</summary>
         public Card(Colors cardColor, int cardRank)
         {
             if (!Enum.IsDefined(typeof(Colors), cardColor.ToString()))
@@ -74,8 +78,8 @@ namespace my_console_project
             Rank = cardRank;
         }
 
-        /// <summary>Creates new card instance using given card abbreviation</summary>
-        /// <param name="cardAbbreviation">String of the form "CR" where C is first letter of cards color and
+        /// <summary>Creates a new card instance using given card abbreviation</summary>
+        /// <param name="cardAbbreviation">String of the form "CR" where C is the first letter of cards color and
         /// R is cards rank. For example: <value>"G1"</value>, <value>"B5"</value>, <value>"W2"</value></param>
         public Card(string cardAbbreviation)
         {
@@ -99,12 +103,12 @@ namespace my_console_project
         #endregion
         #region Methods
 
-        /// <summary>Gives card abbreviation string</summary>
-        /// <returns>String of the form "CR" where C is first letter of cards color and R is cards rank.
-        /// For example: <value>"G1"</value>, <value>"B5"</value>, <value>"W2"</value></returns>
+        /// <summary>Gives cards full name, that consists of color
+        /// name and rank number, separated by a space</summary>
+        /// <returns>Cards full name, For example: <value>"Green 1"</value>, <value>"Blue 5"</value></returns>
         public override string ToString()
         {
-            return Color.ToString()[0].ToString() + Rank;
+            return $"{Color} {Rank}";
         }
 
         /// <summary>Parses first character of a color name</summary>
@@ -123,7 +127,6 @@ namespace my_console_project
         /// <summary>Parses full string name of a color</summary>
         /// <param name = "colorName">Full color name, for example:
         /// <value>"Red"</value>, <value>"Yellow"</value>, <value>"White"</value></param>
-        /// <returns>Card color</returns>
         public static Colors ParseColor(string colorName)
         {
             if (string.IsNullOrEmpty(colorName))
@@ -138,8 +141,7 @@ namespace my_console_project
         }
 
         /// <summary>Parses rank string</summary>
-        /// <param name = "rank">String containing card rank integer</param>
-        /// <returns>Card rank integer</returns>
+        /// <param name = "rank">String that contains card rank integer</param>
         public static int ParseRank(string rank)
         {
             if (string.IsNullOrEmpty(rank))
@@ -158,6 +160,6 @@ namespace my_console_project
             return r;
         }
 
-    #endregion
+        #endregion
     }
 }

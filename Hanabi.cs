@@ -6,6 +6,8 @@ using System.Text.RegularExpressions;
 
 namespace my_console_project
 {
+    /// <summary>Hanabi game class. Takes game moves through public methods, gives
+    /// information about current game state with events and properties</summary>
     class Hanabi
     {
         #region Delegates & Events
@@ -76,7 +78,7 @@ namespace my_console_project
         /// <param name = "abbreviations">String, that contains all abbreviations of the starting deck</param>
         public Hanabi(string abbreviations)
         {
-            MaxAmountOfCardsOnTable = Card.RankLimit * Card.NumberOfColors;
+            MaxAmountOfCardsOnTable = Card.NumberOfColors * Card.RankLimit;
             deck = CreateDeck(abbreviations, MaxCardsOnHands * 2 + 1);
             sequencesOnTheTable = Enum.GetValues(typeof (Card.Colors))
                                       .Cast<Card.Colors>()
@@ -213,33 +215,42 @@ namespace my_console_project
             {
                 return "Card cannot be played";
             }
-            if (!player.KnownCardInfo.ElementAt(cardNumber).RankIsDetermined)
+            ReadOnlyCollection<int> possibleRanks = player.GiveRankGuesses(cardNumber);
+            if (possibleRanks == null)
             {
-                return "Player wasn't certain about the rank";
+                throw new NullReferenceException(nameof(possibleRanks));
             }
-            if (player.KnownCardInfo.ElementAt(cardNumber).ColorIsDetermined)
+            if (!possibleRanks.Contains(card.Rank))
             {
-                return "Safe";
+                throw new InvalidOperationException("Player eliminated actual rank of the card");
             }
-            // Actual card color is not included in possibleColors list to prevent double-check.
-            List<Card.Colors> possibleColors = player.KnownCardInfo.ElementAt(cardNumber).PossibleColors.ToList();
+            if (possibleRanks.Count > 1)
+            {
+                return "Player wasn't certain about the rank: " + string.Join(" ", possibleRanks);
+            }
+            ReadOnlyCollection<Card.Colors> possibleColors = player.GiveColorGuesses(cardNumber);
             if (possibleColors == null || possibleColors.Count == 0)
             {
                 throw new NullReferenceException(nameof(possibleColors));
             }
-            int safeColors = possibleColors.Count(color => CheckMoveAvailability(color, card.Rank));
-            if (safeColors == possibleColors.Count)
+            if (!possibleColors.Contains(card.Color))
             {
-                return "Safe";
+                throw new InvalidOperationException("Player eliminated actual color of the card");
             }
-            return $"Only {safeColors + 1} out of {possibleColors.Count + 1} possible colors matched the sequences";
+            int numberOfMatched = possibleColors.Count(color => CheckMoveAvailability(color, card.Rank));
+            if (numberOfMatched != possibleColors.Count)
+            {
+                return $"Only {numberOfMatched} out of {possibleColors.Count} possible colors matched the sequences";
+            }
+            return "Safe";
         }
 
         #endregion
         #region Public Methods
 
-        /// <summary>Type of game move. Current active player puts one of his card
-        /// on the table and takes a new one. If deck is empty - game ends</summary>
+        /// <summary>Type of a game move.
+        /// Current active player puts one of his cards on the table and takes a new one.
+        /// If deck is empty - game ends</summary>
         /// <param name = "cardString">String, that contains card number</param>
         public void PlayCard(string cardString)
         {
@@ -255,7 +266,7 @@ namespace my_console_project
             if (moveSafety != "Safe")
             {
                 MovesWithRisk++;
-                RiskyMove($"{playedCard.Color} {playedCard.Rank} - {moveSafety}");
+                RiskyMove($"{playedCard} - {moveSafety}");
             }
             SuccessfullyPlayedCards++;
             sequencesOnTheTable[playedCard.Color]++;
@@ -266,9 +277,8 @@ namespace my_console_project
             else MovePerformed();
         }
 
-        /// <summary>Type of game move.
-        /// Current active player drops one of his cards and takes a new one.
-        /// If deck is empty - game ends</summary>
+        /// <summary>Type of a game move.
+        /// Current active player drops one of his cards and takes a new one. If deck is empty - game ends</summary>
         /// <param name = "cardString">String that contains card number</param>
         public void DropCard(string cardString)
         {
@@ -280,8 +290,9 @@ namespace my_console_project
             else MovePerformed();
         }
 
-        /// <summary>Type of game move.
-        /// Current active player tells to current passive player which of his cards have specific color</summary>
+        /// <summary>Type of a game move.
+        /// Current active player tells to the current passive player
+        /// which of his cards have a specific color</summary>
         /// <param name = "colorName">Name of the color</param>
         /// <param name = "cardNumbersString">String that contains card numbers</param>
         public void TellColor(string colorName, string cardNumbersString)
@@ -293,8 +304,9 @@ namespace my_console_project
             else GameOver("Player told wrong cards");
         }
 
-        /// <summary>Type of game move.
-        /// Current active player tells to current passive player which of his cards have specific rank</summary>
+        /// <summary>Type of a game move.
+        /// Current active player tells to current passive player
+        /// which of his cards have a specific rank</summary>
         /// <param name = "rankString">String that contains rank number</param>
         /// <param name = "cardNumbersString">String that contains card numbers</param>
         public void TellRank(string rankString, string cardNumbersString)
@@ -306,6 +318,6 @@ namespace my_console_project
             else GameOver("Player told wrong cards");
         }
 
-#endregion
+        #endregion
     }
 }

@@ -21,6 +21,7 @@ namespace my_console_project
 
     class Program
     {
+        /// <summary>Hanabi game, that is currently played</summary>
         static Hanabi game;
 
         /// <summary>Checks if there is an active game at the moment</summary>
@@ -29,13 +30,13 @@ namespace my_console_project
             return game != null && !game.GameIsFinished;
         }
 
-        /// <summary>Display message in console without changing color</summary>
+        /// <summary>Displays message in the console without changing the color</summary>
         static void DisplayMessage(string message)
         {
             Console.WriteLine(message);
         }
 
-        /// <summary>Display message in console using specific text color</summary>
+        /// <summary>Displays message in the console using specific text color</summary>
         static void DisplayMessage(string message, ConsoleColor messageColor)
         {
             Console.ForegroundColor = messageColor;
@@ -77,7 +78,7 @@ namespace my_console_project
             {
                 match = ParseCommand(command, @"^Start new game with deck(( +\w+)+) *$",
                                                 "Start new game with deck %ABBREVIATIONS%");
-                // This local variable is needed for correct detection of previous game termination.
+                // This local variable is needed for correct detection of the previous game termination.
                 Hanabi newGame = new Hanabi(match.Groups[1].ToString());
                 newGame.GameOver += s => DisplayMessage(newGame.Stats);
 #if DEBUG
@@ -87,7 +88,7 @@ namespace my_console_project
                 DisplayMessage(newGame.DetailedStats, ConsoleColor.DarkCyan);
                 newGame.MovePerformed += () => DisplayMessage(newGame.DetailedStats, ConsoleColor.DarkCyan);
                 newGame.GameOver += reason => DisplayMessage("Game over. Reason: " + reason, ConsoleColor.DarkYellow);
-                newGame.RiskyMove += info => DisplayMessage("Risky move " + info, ConsoleColor.Red);
+                newGame.RiskyMove += info => DisplayMessage("Risky move: " + info, ConsoleColor.Red);
 #endif
                 game = newGame;
             }
