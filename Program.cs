@@ -21,7 +21,10 @@ namespace my_console_project
 
     class Program
     {
+        /// <summary>Hanabi game, that is currently being played</summary>
         static Hanabi game;
+
+        #region Additional Methods
 
         /// <summary>Checks if there is an active game at the moment</summary>
         static bool GameIsCurrentlyPlayed()
@@ -29,13 +32,13 @@ namespace my_console_project
             return game != null && !game.GameIsFinished;
         }
 
-        /// <summary>Display message in console without changing color</summary>
+        /// <summary>Displays message in the console without changing the color</summary>
         static void DisplayMessage(string message)
         {
             Console.WriteLine(message);
         }
 
-        /// <summary>Display message in console using specific text color</summary>
+        /// <summary>Displays message in the console using specific text color</summary>
         static void DisplayMessage(string message, ConsoleColor messageColor)
         {
             Console.ForegroundColor = messageColor;
@@ -53,7 +56,7 @@ namespace my_console_project
         {
             if (!GameIsCurrentlyPlayed() && !command.StartsWith("Start"))
             {
-                throw new GameCommandException("Cant process command, no game is currently played");
+                throw new GameCommandException("Can't process command, no game is currently being played");
             }
             Match match = new Regex(pattern).Match(command);
             if (!match.Success)
@@ -64,7 +67,7 @@ namespace my_console_project
         }
 
         /// <summary>Checks spelling of input commands, determines them and performs corresponding actions</summary>
-        /// <remarks>Most input-output formating is handled here</remarks>
+        /// <remarks>Most input-output formatting is handled here</remarks>
         /// <param name = "command">Input command</param>
         static void ProcessAndRunCommand(string command)
         {
@@ -77,17 +80,17 @@ namespace my_console_project
             {
                 match = ParseCommand(command, @"^Start new game with deck(( +\w+)+) *$",
                                                 "Start new game with deck %ABBREVIATIONS%");
-                // This local variable is needed for correct detection of previous game termination.
+                // This local variable is needed for correct detection of the previous game termination.
                 Hanabi newGame = new Hanabi(match.Groups[1].ToString());
                 newGame.GameOver += s => DisplayMessage(newGame.Stats);
 #if DEBUG
                 if (GameIsCurrentlyPlayed()) {
-                    DisplayMessage("Previous game was terminated, new game was created", ConsoleColor.DarkYellow);
+                    DisplayMessage("Previous game was terminated, new game has been created", ConsoleColor.DarkYellow);
                 }
                 DisplayMessage(newGame.DetailedStats, ConsoleColor.DarkCyan);
                 newGame.MovePerformed += () => DisplayMessage(newGame.DetailedStats, ConsoleColor.DarkCyan);
                 newGame.GameOver += reason => DisplayMessage("Game over. Reason: " + reason, ConsoleColor.DarkYellow);
-                newGame.RiskyMove += card => DisplayMessage($"Risky move {card.Color} {card.Rank}", ConsoleColor.Red);
+                newGame.RiskyMove += info => DisplayMessage("Risky move: " + info, ConsoleColor.Red);
 #endif
                 game = newGame;
             }
@@ -119,10 +122,12 @@ namespace my_console_project
             }
         }
 
+        #endregion
+
         static void Main()
         {
 #if DEBUG
-            DisplayMessage("Hanabi game is loaded, starting main command loop, awaiting for commands",
+            DisplayMessage("Hanabi game is loaded, starting main command loop, awaiting commands",
                 ConsoleColor.DarkGreen);
 #endif
             while (true)
@@ -137,7 +142,7 @@ namespace my_console_project
                 }
                 catch (Exception e)
                 {
-                    DisplayMessage($"Game terminated because of exception: {e.GetType()}\n{e.Message}",
+                    DisplayMessage($"Game terminated due to exception: {e.GetType()}\n{e.Message}",
                         ConsoleColor.Red);
 #if DEBUG
                     DisplayMessage($"Stack trace:\n{e.StackTrace}", ConsoleColor.DarkGray);
