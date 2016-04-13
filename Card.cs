@@ -6,7 +6,7 @@ using System.Collections.ObjectModel;
 namespace my_console_project
 {
     /// <summary>Common type of a Hanabi playing card</summary>
-    /// <remarks>Lack of the properties set-accessors makes this
+    /// <remarks>Lack of properties set-accessors makes this
     /// class immutable everywhere except the constructor</remarks>
     class Card
     {
@@ -23,12 +23,13 @@ namespace my_console_project
             White,
             Yellow
         }
-        
+
+        /// <summary>Dictionary that helps to get the color from its first letter</summary>
+        private static readonly ReadOnlyDictionary<char, Colors> ColorsByFirstLetter;
+
         public static readonly int RankLimit = 5;
         public static readonly int NumberOfColors;
         public static readonly int MaxAbbreviationLength = RankLimit.ToString().Length + 1;
-        /// <summary>Dictionary that helps to get the color from its first letter</summary>
-        public static readonly ReadOnlyDictionary<char, Colors> ColorsByFirstLetter;
         
         #endregion
         #region Props
@@ -36,7 +37,7 @@ namespace my_console_project
         public Colors Color { get; }
         public int Rank { get; }
 
-        /// <summary>Gives card abbreviation string</summary>
+        /// <summary>Gives the card abbreviation string</summary>
         public string Abbreviation => Color.ToString()[0].ToString() + Rank;
         
         #endregion
@@ -112,7 +113,7 @@ namespace my_console_project
         }
 
         /// <summary>Parses first character of a color name</summary>
-        /// <param name = "firstLetterOfAColor">One-symbol abbreviation of color, for example:
+        /// <param name = "firstLetterOfAColor">First letter of a  color, for example:
         /// <value>'R'</value>, <value>'Y'</value>, <value>'W'</value></param>
         /// <returns>Card color</returns>
         public static Colors ParseColor(char firstLetterOfAColor)

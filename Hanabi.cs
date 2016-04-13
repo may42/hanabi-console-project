@@ -23,11 +23,11 @@ namespace my_console_project
         /// <remarks>That includes not only "Play card", but also "Drop card", "Tell color" and "Tell rank"</remarks>
         public event GameMethodContainer MovePerformed = delegate { };
 
-        /// <summary>Fires when game is finished without errors</summary>
+        /// <summary>Fires when the game is finished without errors</summary>
         /// <remarks>Empty delegate assignment avoids the need to check events for null</remarks>
         public event GameMethodContainer<string> GameOver = delegate { };
 
-        /// <summary>Fires when risky move is played</summary>
+        /// <summary>Fires when risky move has been performed</summary>
         public event GameMethodContainer<string> RiskyMove = delegate { };
 
         #endregion
@@ -145,7 +145,7 @@ namespace my_console_project
         {
             if (deck.Count == 0)
             {
-                throw new InvalidOperationException("Can't take cards from empty deck");
+                throw new InvalidOperationException("Can't take cards from an empty deck");
             }
             Card card = deck[0];
             deck.RemoveAt(0);
@@ -184,7 +184,7 @@ namespace my_console_project
                                      .ToArray();
             if (cardNumbers.Length == 0)
             {
-                throw new GameCommandException("Expected at least one card number");
+                throw new GameCommandException("At least one card number is expected");
             }
             return cardNumbers;
         }
@@ -229,7 +229,7 @@ namespace my_console_project
                 return "Player wasn't certain about the rank: " + string.Join(" ", possibleRanks);
             }
             ReadOnlyCollection<Card.Colors> possibleColors = player.GiveColorGuesses(cardNumber);
-            if (possibleColors == null || possibleColors.Count == 0)
+            if (possibleColors == null)
             {
                 throw new NullReferenceException(nameof(possibleColors));
             }
@@ -250,7 +250,7 @@ namespace my_console_project
 
         /// <summary>Type of a game move.
         /// Current active player puts one of his cards on the table and takes a new one.
-        /// If deck is empty - game ends</summary>
+        /// If the deck is empty - game ends</summary>
         /// <param name = "cardString">String, that contains card number</param>
         public void PlayCard(string cardString)
         {
@@ -278,7 +278,7 @@ namespace my_console_project
         }
 
         /// <summary>Type of a game move.
-        /// Current active player drops one of his cards and takes a new one. If deck is empty - game ends</summary>
+        /// Current active player drops one of his cards and takes a new one. If the deck is empty - game ends</summary>
         /// <param name = "cardString">String that contains card number</param>
         public void DropCard(string cardString)
         {
@@ -291,7 +291,7 @@ namespace my_console_project
         }
 
         /// <summary>Type of a game move.
-        /// Current active player tells to the current passive player
+        /// Current active player tells current passive player
         /// which of his cards have a specific color</summary>
         /// <param name = "colorName">Name of the color</param>
         /// <param name = "cardNumbersString">String that contains card numbers</param>
@@ -301,11 +301,11 @@ namespace my_console_project
             Card.Colors color = Card.ParseColor(colorName);
             int[] cardNumbers = ParseMultipleCardNumbers(cardNumbersString);
             if (currentPassivePlayer.ReceiveColorHint(color, cardNumbers)) MovePerformed();
-            else GameOver("Player told wrong cards");
+            else GameOver("Player told the wrong cards");
         }
 
         /// <summary>Type of a game move.
-        /// Current active player tells to current passive player
+        /// Current active player tells current passive player
         /// which of his cards have a specific rank</summary>
         /// <param name = "rankString">String that contains rank number</param>
         /// <param name = "cardNumbersString">String that contains card numbers</param>
@@ -315,7 +315,7 @@ namespace my_console_project
             int rank = Card.ParseRank(rankString);
             int[] cardNumbers = ParseMultipleCardNumbers(cardNumbersString);
             if (currentPassivePlayer.ReceiveRankHint(rank, cardNumbers)) MovePerformed();
-            else GameOver("Player told wrong cards");
+            else GameOver("Player told the wrong cards");
         }
 
         #endregion

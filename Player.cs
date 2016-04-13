@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 
 namespace my_console_project
 {
-    /// <summary>Common type of a Hanabi player. Stores information about his
+    /// <summary>Common type of a Hanabi player. Stores information about their
     /// cards, receives hints and commands to drop or take new cards</summary>
     class Player
     {
@@ -65,16 +65,16 @@ namespace my_console_project
 
         /// <summary>List of player cards</summary>
         private readonly List<Card> cardsOnHand;
-        /// <summary>List of all the information that player knows about his cards</summary>
+        /// <summary>List of all the information that player knows about their cards</summary>
         private readonly List<PlayerCardInfo> knownCardInfo;
-        /// <summary>Read-only list of players cards</summary>
+        /// <summary>Read-only list of player cards</summary>
         public readonly ReadOnlyCollection<Card> CardsOnHand;
 
         #endregion
         #region Constructors
 
         /// <summary>Creates Player instance with given cards on hand</summary>
-        /// <remarks>Player doesn't monitor number of his cards. This responsibility lies entirely on Hanabi</remarks>
+        /// <remarks>Player doesn't monitor the number of their cards. This responsibility lies entirely on Hanabi</remarks>
         /// <param name = "initialCards">Initial player cards</param>
         public Player(IEnumerable<Card> initialCards)
         {
@@ -100,7 +100,7 @@ namespace my_console_project
         /// shows whether certain card is listed or not</summary>
         /// <remarks>Duplicates are ignored</remarks>
         /// <param name = "cardNumbers">Array of card numbers</param>
-        /// <returns>Array that shows whether certain card number is
+        /// <returns>Array that shows whether a certain card number is
         /// listed in <paramref name="cardNumbers"/> or not</returns>
         private bool[] CheckWhichNumbersAreListed(int[] cardNumbers)
         {
@@ -123,7 +123,7 @@ namespace my_console_project
         #endregion
         #region Public Methods
 
-        /// <summary>Gives string representation of all cards on player's hand</summary>
+        /// <summary>Gives a string representation of all cards on player's hand</summary>
         /// <returns>Concatenation of all card abbreviations, separated with spaces</returns>
         public override string ToString()
         {
