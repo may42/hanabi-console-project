@@ -3,7 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
-namespace my_console_project
+namespace Hanabi
 {
     /// <summary>Common type of a Hanabi playing card</summary>
     /// <remarks>Lack of properties set-accessors makes this
@@ -88,7 +88,8 @@ namespace my_console_project
             {
                 throw new GameCommandException("Card abbreviation expected");
             }
-            if (cardAbbreviation.Length < 2) {
+            if (cardAbbreviation.Length < 2)
+            {
                 throw new GameCommandException(
                     $"Card abbreviation must be at least 2 symbols long: {cardAbbreviation}");
             }

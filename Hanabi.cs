@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
 
-namespace my_console_project
+namespace Hanabi
 {
     /// <summary>Hanabi game class. Takes game moves through public methods, gives
     /// information about current game state with events and properties</summary>
@@ -27,7 +27,7 @@ namespace my_console_project
         /// <remarks>Empty delegate assignment avoids the need to check events for null</remarks>
         public event GameMethodContainer<string> GameOver = delegate { };
 
-        /// <summary>Fires when risky move has been performed</summary>
+        /// <summary>Fires when risky move is performed</summary>
         public event GameMethodContainer<string> RiskyMove = delegate { };
 
         #endregion
@@ -80,14 +80,14 @@ namespace my_console_project
         {
             MaxAmountOfCardsOnTable = Card.NumberOfColors * Card.RankLimit;
             deck = CreateDeck(abbreviations, MaxCardsOnHands * 2 + 1);
-            sequencesOnTheTable = Enum.GetValues(typeof (Card.Colors))
+            sequencesOnTheTable = Enum.GetValues(typeof(Card.Colors))
                                       .Cast<Card.Colors>()
                                       .Distinct()
                                       .ToDictionary(color => color, c => 0);
             currentActivePlayer = firstPlayer = new Player(deck.Take(MaxCardsOnHands));
             currentPassivePlayer = secondPlayer = new Player(deck.Skip(MaxCardsOnHands)
                                                                  .Take(MaxCardsOnHands));
-            deck = deck.Skip(MaxCardsOnHands*2).ToList();
+            deck = deck.Skip(MaxCardsOnHands * 2).ToList();
             deck.TrimExcess();
             Deck = new ReadOnlyCollection<Card>(deck);
             SequencesOnTheTable = new ReadOnlyDictionary<Card.Colors, int>(sequencesOnTheTable);
@@ -254,7 +254,10 @@ namespace my_console_project
         /// <param name = "cardString">String, that contains card number</param>
         public void PlayCard(string cardString)
         {
-            if (GameIsFinished) return;
+            if (GameIsFinished)
+            {
+                throw new GameCommandException("Can't play card, the game has finished");
+            }
             int cardNumber = ParseCardNumber(cardString);
             Card playedCard = currentActivePlayer.CardsOnHand[cardNumber];
             string moveSafety = CheckMoveSafety(currentActivePlayer, cardNumber);
@@ -282,7 +285,10 @@ namespace my_console_project
         /// <param name = "cardString">String that contains card number</param>
         public void DropCard(string cardString)
         {
-            if (GameIsFinished) return;
+            if (GameIsFinished)
+            {
+                throw new GameCommandException("Can't drop card, the game has finished");
+            }
             int cardNumber = ParseCardNumber(cardString);
             currentActivePlayer.DropCard(cardNumber);
             currentActivePlayer.TakeNewCard(GetNewCardFromDeck());
@@ -291,13 +297,15 @@ namespace my_console_project
         }
 
         /// <summary>Type of a game move.
-        /// Current active player tells current passive player
-        /// which of his cards have a specific color</summary>
+        /// Current active player tells current passive player which of his cards have a specific color</summary>
         /// <param name = "colorName">Name of the color</param>
         /// <param name = "cardNumbersString">String that contains card numbers</param>
         public void TellColor(string colorName, string cardNumbersString)
         {
-            if (GameIsFinished) return;
+            if (GameIsFinished)
+            {
+                throw new GameCommandException("Can't tell color, the game has finished");
+            }
             Card.Colors color = Card.ParseColor(colorName);
             int[] cardNumbers = ParseMultipleCardNumbers(cardNumbersString);
             if (currentPassivePlayer.ReceiveColorHint(color, cardNumbers)) MovePerformed();
@@ -305,13 +313,15 @@ namespace my_console_project
         }
 
         /// <summary>Type of a game move.
-        /// Current active player tells current passive player
-        /// which of his cards have a specific rank</summary>
+        /// Current active player tells current passive player which of his cards have a specific rank</summary>
         /// <param name = "rankString">String that contains rank number</param>
         /// <param name = "cardNumbersString">String that contains card numbers</param>
         public void TellRank(string rankString, string cardNumbersString)
         {
-            if (GameIsFinished) return;
+            if (GameIsFinished)
+            {
+                throw new GameCommandException("Can't tell rank, the game has finished");
+            }
             int rank = Card.ParseRank(rankString);
             int[] cardNumbers = ParseMultipleCardNumbers(cardNumbersString);
             if (currentPassivePlayer.ReceiveRankHint(rank, cardNumbers)) MovePerformed();

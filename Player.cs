@@ -3,7 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
-namespace my_console_project
+namespace Hanabi
 {
     /// <summary>Common type of a Hanabi player. Stores information about their
     /// cards, receives hints and commands to drop or take new cards</summary>
@@ -14,8 +14,9 @@ namespace my_console_project
         /// <summary>Special class used by the player for storing and managing
         /// card information, gained from the hints of the other player</summary>
         /// <remarks>I tried to safely expose this class as a ReadOnlyCollection
-        /// member, using covariance to upcast it to an interface IPlayerCardInfo, thus,
-        /// concealing its public fields, but this method turned out to be unsafe</remarks>
+        /// member, using covariance to upcast it to an interface IPlayerCardInfo,
+        /// thus, concealing its public fields, but this method turned out to be unsafe:
+        /// <a href="https://github.com/may42/my-console-project/issues/6">issue #6</a></remarks>
         private class PlayerCardInfo
         {
             #region Fields
@@ -38,7 +39,7 @@ namespace my_console_project
             /// <summary>Initializes static fields <see cref="AllRanks"/> and <see cref="AllColors"/></summary>
             static PlayerCardInfo()
             {
-                AllColors.AddRange(Enum.GetValues(typeof (Card.Colors))
+                AllColors.AddRange(Enum.GetValues(typeof(Card.Colors))
                                        .Cast<Card.Colors>()
                                        .Distinct());
                 for (int i = 1; i <= Card.RankLimit; i++)

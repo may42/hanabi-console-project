@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text.RegularExpressions;
 
-namespace my_console_project
+namespace Hanabi
 {
     /// <summary>Special exception class, for handling errors, caused by incorrect commands</summary>
     class GameCommandException : ArgumentException
@@ -19,18 +19,14 @@ namespace my_console_project
         }
     }
 
+    /// <summary>Hanabi card game made for <a href="https://kontur.ru">kontur.ru</a></summary>
+    /// <remarks>GitHub repository: <a href="https://github.com/may42/my-console-project">may42</a></remarks>
     class Program
     {
         /// <summary>Hanabi game, that is currently being played</summary>
         static Hanabi game;
 
         #region Additional Methods
-
-        /// <summary>Checks if there is an active game at the moment</summary>
-        static bool GameIsCurrentlyPlayed()
-        {
-            return game != null && !game.GameIsFinished;
-        }
 
         /// <summary>Displays message in the console without changing the color</summary>
         static void DisplayMessage(string message)
@@ -54,7 +50,7 @@ namespace my_console_project
         /// <returns>Match-object with command parameters</returns>
         static Match ParseCommand(string command, string pattern, string expectedFormat)
         {
-            if (!GameIsCurrentlyPlayed() && !command.StartsWith("Start"))
+            if (!command.StartsWith("Start") && game == null)
             {
                 throw new GameCommandException("Can't process command, no game is currently being played");
             }
@@ -84,7 +80,8 @@ namespace my_console_project
                 Hanabi newGame = new Hanabi(match.Groups[1].ToString());
                 newGame.GameOver += s => DisplayMessage(newGame.Stats);
 #if DEBUG
-                if (GameIsCurrentlyPlayed()) {
+                if (game != null && !game.GameIsFinished)
+                {
                     DisplayMessage("Previous game was terminated, new game has been created", ConsoleColor.DarkYellow);
                 }
                 DisplayMessage(newGame.DetailedStats, ConsoleColor.DarkCyan);
